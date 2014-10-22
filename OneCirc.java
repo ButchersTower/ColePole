@@ -493,6 +493,31 @@ public class OneCirc extends JPanel implements Runnable, MouseListener,
 				subPoint[1], relSubThea, adj };
 	}
 
+	void tang2circ(float[] c1Loc, float c1r, float[] c2Loc, float c2r) {
+		drawCircle(Color.RED, c1Loc, c1r);
+		drawCircle(Color.RED, c2Loc, c2r);
+		// find mid point
+		// circle 1 to circle 2 vect
+		float[] c1toc2 = Vect2d.vectSub(c2Loc, c1Loc);
+		// ratio of c1r to c2r
+		float c1ratc2 = c1r / (c1r + c2r);
+		// mid point is vect * ratio;
+		float[] midPoint = Vect2d.vectMultScalar(c1ratc2, c1toc2);
+		// get tangent of the midpoint on both circles.
+		g.fillOval((int) (c1Loc[0] + midPoint[0] - 2), (int) (c1Loc[1]
+				+ midPoint[1] - 2), 4, 4);
+
+		// get four tangent points.
+		ta
+
+	}
+
+	void drawCircle(Color color, float[] circLoc, float radius) {
+		g.setColor(color);
+		g.drawOval((int) (circLoc[0] - radius), (int) (circLoc[1] - radius),
+				(int) (radius * 2), (int) (radius * 2));
+	}
+
 	/**
 	 * Methods go above here.
 	 * 
@@ -530,6 +555,8 @@ public class OneCirc extends JPanel implements Runnable, MouseListener,
 			setPath = false;
 		}
 		pathing = false;
+
+		tang2circ(new float[] { 100, 100 }, 50, new float[] { 25, 200 }, 25);
 	}
 
 	@Override
