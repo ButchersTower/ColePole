@@ -13,8 +13,15 @@ import java.awt.image.BufferedImage;
 
 import javax.swing.JPanel;
 
+import ColePole.lib.JaMa;
+import ColePole.lib.Vect2d;
+
 public class OneCirc extends JPanel implements Runnable, MouseListener,
 		KeyListener {
+
+	// 1 * 10^(-4)
+	// one ten thousandth of a pixel should do much harm.
+	float smallNum = .0001f;
 
 	int width = 540;
 	int height = 450;
@@ -80,6 +87,7 @@ public class OneCirc extends JPanel implements Runnable, MouseListener,
 	}
 
 	public void run() {
+		System.out.println("smallNum: " + smallNum);
 		image = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
 		g = (Graphics2D) image.getGraphics();
 		this.setSize(new Dimension(width, height));
@@ -105,6 +113,7 @@ public class OneCirc extends JPanel implements Runnable, MouseListener,
 		while (running) {
 			// Do the things you want the gLoop to do below here
 
+			boolean draw = false;
 			if (setPath) {
 				playMoveWhole();
 				moving = true;
@@ -119,6 +128,10 @@ public class OneCirc extends JPanel implements Runnable, MouseListener,
 						pX += pVect[0];
 						pY += pVect[1];
 						path = Vect2d.vectSub(path, pVect);
+					} else {
+						pX += path[0];
+						pY += path[1];
+						moving = false;
 					}
 					pa = Vect2d.norm(path);
 					if (pa == 0) {
@@ -128,11 +141,17 @@ public class OneCirc extends JPanel implements Runnable, MouseListener,
 				// if (pX == tarX && pY == tarY) {
 				// moving = false;
 				// }
+				draw = true;
+			}
+
+			if (pathing) {
+				// System.out.println("pathing");
+				followPath();
+				draw = true;
+			}
+			if (draw) {
 				draw();
 				drwGm();
-			}
-			if (pathing) {
-				followPath();
 			}
 			// System.out.println("runTime: " + timer());
 			// And above here.
@@ -192,6 +211,43 @@ public class OneCirc extends JPanel implements Runnable, MouseListener,
 		if (distPointToVect(Vect2d.vectSub(new float[] { treeInfo[0],
 				treeInfo[1] }, new float[] { pX, pY }), deltaVect) < treeInfo[2]
 				+ pRadius) {
+			// if the target point was inside of a tree then project it out.
+			float[] tarRelTree = new float[] { tarX - treeInfo[0],
+					tarY - treeInfo[1] };
+			if (Vect2d.norm(tarRelTree) <= pRadius + treeInfo[2]) {
+				// add small num to bypass rounding mistakes.
+				// float[] pushedTar = Vect2d.theaToPoint(
+				// Vect2d.pointToThea(tarRelTree), pRadius + treeInfo[2]
+				// + smallNum);
+				/**
+				 * Instead of pushing it out pick the closest point between play
+				 * and tree.
+				 */
+				// treeInfo.l is 3 but Ve2d only reads the first two increments.
+				float[] treeRelPlay = Vect2d.vectSub(treeInfo, new float[] {
+						pX, pY });
+				// deltaVect scaled down by plaR + treR.
+				float ta = Vect2d.norm(treeRelPlay);
+				System.out.println("b4 ta: " + ta);
+				treeRelPlay = Vect2d.vectMultScalar(
+						(ta - (pRadius + treeInfo[2])) / ta, treeRelPlay);
+				ta = Vect2d.norm(treeRelPlay);
+				System.out.println("cd ta: " + ta);
+				// tarX = pX + treeRelPlay[0];
+				// tarY = pY + treeRelPlay[1];
+				// tarX = treeInfo[0] + pushedTar[0];
+				// tarY = treeInfo[1] + pushedTar[1];
+				// playMoveWhole();
+				// direction = JaMa.appendFloatArAr(direction, new float[] { 0,
+				// treeRelPlay[0], treeRelPlay[1], ta });
+				myPath = new float[] { 0, treeRelPlay[0] / ta,
+						treeRelPlay[1] / ta, ta };
+				g.setColor(Color.ORANGE);
+				g.drawOval((int) (pX + myPath[0]) - 2,
+						(int) (pY + myPath[1]) - 2, 4, 4);
+				pathing = true;
+				return;
+			}
 			// cant move
 			// moving = false;
 			float[] tangents = myAngleThing(new float[] { pX, pY }, pRadius,
@@ -205,13 +261,15 @@ public class OneCirc extends JPanel implements Runnable, MouseListener,
 			// tangents from play
 			direction[0] = JaMa.appendArFloatAr(direction[0], new float[] { 1,
 					tangents[2] });
-
+			System.out.println("tangents[2]: " + tangents[2]);
+			System.out.println("tangents[5]: " + tangents[5]);
 			direction[1] = JaMa.appendArFloatAr(direction[1], new float[] { 1,
 					tangents[5] });
 
 			tangents = myAngleThing(new float[] { tarX, tarY }, pRadius,
 					new float[] { treeInfo[0], treeInfo[1] }, treeInfo[2]);
-
+			System.out.println("tangents[2]: " + tangents[2]);
+			System.out.println("tangents[5]: " + tangents[5]);
 			// tangents from tar
 			// plusThea from player should get subThea from tar.
 			direction[0] = JaMa.appendArFloatAr(direction[0], new float[] {
@@ -250,7 +308,7 @@ public class OneCirc extends JPanel implements Runnable, MouseListener,
 				if (direction[d][i * 4] == 0) {
 					sums[d] += direction[d][i * 4 + 3];
 				} else {
-					sums[d] += Math.abs(JaMa.theaSub(direction[d][i * 4 + 1],
+					sums[d] += Math.abs(Vect2d.theaSub(direction[d][i * 4 + 1],
 							direction[d][i * 4 + 2]) * direction[d][i * 4 + 3]);
 				}
 			}
@@ -267,54 +325,16 @@ public class OneCirc extends JPanel implements Runnable, MouseListener,
 		// System.out.println("lowest: " + lowest);
 	}
 
-	void followPathSwitchBreak() {
-		// uses switch
-		// Assumes that
-		// if [0] == 0 then line.
-		// if [0] == 1 then curve.
-		float[] myPath = direction[lowest];
-		float playSpeedLeft = pSpeed;
-		// if (myPath[0] == 0) {
-		System.out.println("(int) myPath[0]: " + ((int) myPath[0]));
-		switch ((int) myPath[0]) {
-		case 0:
-			System.out.println("case 0");
-			// System.out.println("line");
-			// linear so go straight
-			if (myPath[3] > playSpeedLeft) {
-				System.out.println("playSpeedLeft : " + playSpeedLeft);
-				System.out.println("myPath[3]: " + myPath[3]);
-				// Vect2d.sayVect("myPath", myPath);
-				pX += myPath[1] * playSpeedLeft;
-				pY += myPath[2] * playSpeedLeft;
-				myPath[3] -= playSpeedLeft;
-			} else {
-
-				pX += myPath[1] * myPath[3];
-				pY += myPath[2] * myPath[3];
-				playSpeedLeft -= myPath[3];
-				// delete the four. and move on.
-				System.out.println("myPath.l: " + myPath.length);
-				myPath = JaMa.removeFirstFloatAr(myPath, 4);
-				System.out.println("myPath.l: " + myPath.length);
-			}
-			// }
-			// if (myPath[0] == 1) {
-			break;
-		case 1:
-			System.out.println("case 1");
-			// around edge
-			float edgeLength = JaMa.theaSub(myPath[1], myPath[2]) * myPath[3];
-			break;
-		}
-	}
-
 	void followPath() {
 		playSpeedLeft = pSpeed;
 		while (myPath.length > 0 && playSpeedLeft > 0) {
-			System.out.println("while");
+			// System.out.println("while");
 			sortPath();
 		}
+		if (myPath.length == 0) {
+			pathing = false;
+		}
+		moving = false;
 	}
 
 	void sortPath() {
@@ -328,8 +348,8 @@ public class OneCirc extends JPanel implements Runnable, MouseListener,
 				// Vect2d.sayVect("myPath", myPath);
 				pX += myPath[1] * playSpeedLeft;
 				pY += myPath[2] * playSpeedLeft;
-				// System.out.println("myPath[1]: " + myPath[1]);
-				// System.out.println("myPath[2]: " + myPath[2]);
+				System.out.println("myPath[1]: " + myPath[1]);
+				System.out.println("myPath[2]: " + myPath[2]);
 				// System.out.println("xAdd: " + myPath[1] * playSpeedLeft);
 				// System.out.println("yAdd: " + myPath[2] * playSpeedLeft);
 				myPath[3] -= playSpeedLeft;
@@ -337,6 +357,10 @@ public class OneCirc extends JPanel implements Runnable, MouseListener,
 			} else {
 				pX += myPath[1] * myPath[3];
 				pY += myPath[2] * myPath[3];
+				System.out.println("tarX: " + tarX);
+				System.out.println("tarY: " + tarY);
+				System.out.println("pX: " + pX);
+				System.out.println("pY: " + pY);
 				playSpeedLeft -= myPath[3];
 				// delete the four. and move on.
 				myPath = JaMa.removeFirstFloatAr(myPath, 4);
@@ -344,7 +368,7 @@ public class OneCirc extends JPanel implements Runnable, MouseListener,
 		} else if (myPath[0] == 1) {
 			System.out.println("path 1");
 			// around edge
-			float edgeLength = Math.abs(JaMa.theaSub(myPath[1], myPath[2])
+			float edgeLength = Math.abs(Vect2d.theaSub(myPath[1], myPath[2])
 					* myPath[3]);
 			System.out.println("edgeLength: " + edgeLength);
 			if (edgeLength > playSpeedLeft) {
@@ -353,15 +377,15 @@ public class OneCirc extends JPanel implements Runnable, MouseListener,
 				float possableThea = playSpeedLeft / myPath[3];
 				System.out.println("possableThea: " + possableThea);
 				float newThea;
-				if (lowest == 0) {
-					newThea = myPath[2] + possableThea;
+				if (lowest == 1) {
+					newThea = Vect2d.theaAdd(myPath[1], possableThea);
 					// add thea
 				} else {
-					newThea = myPath[2] - possableThea;
+					newThea = Vect2d.theaSub(myPath[1], possableThea);
 					// sub thea
 				}
-				float[] newLoc = JaMa.theaToPoint(newThea, myPath[3]);
-				myPath[2] = newThea;
+				myPath[1] = newThea;
+				float[] newLoc = Vect2d.theaToPoint(newThea, myPath[3]);
 				g.setColor(Color.MAGENTA);
 				g.drawOval((int) (treeInfo[0] + newLoc[0]) - 3,
 						(int) (treeInfo[1] + newLoc[1]) - 3, 6, 6);
@@ -369,9 +393,9 @@ public class OneCirc extends JPanel implements Runnable, MouseListener,
 				pY = treeInfo[1] + newLoc[1];
 				System.out.println("pX: " + pX + ",   pY: " + pY);
 				// pathing = false;
-				// playSpeedLeft = 0;
+				playSpeedLeft = 0;
 			} else {
-				float[] newLoc = JaMa.theaToPoint(myPath[2], myPath[3]);
+				float[] newLoc = Vect2d.theaToPoint(myPath[2], myPath[3]);
 				pX = treeInfo[0] + newLoc[0];
 				pY = treeInfo[1] + newLoc[1];
 				myPath = JaMa.removeFirstFloatAr(myPath, 4);
@@ -415,7 +439,6 @@ public class OneCirc extends JPanel implements Runnable, MouseListener,
 				(int) treeInfo[2] * 2);
 	}
 
-	// [1, 2, 3] sometimes is NaN
 	float[] myAngleThing(float[] play, float pRad, float[] tree, float tRad) {
 		// if |delta| < pRad + tRad
 		// get thea of play and project it out from tree to a dist of pRad+tRad.
@@ -423,13 +446,13 @@ public class OneCirc extends JPanel implements Runnable, MouseListener,
 		float[] delta = Vect2d.vectSub(tree, play);
 		float hyp = Vect2d.norm(delta);
 		float opp = pRad + tRad;
-		System.out.println("hyp * hyp: " + hyp * hyp);
-		System.out.println("opp * opp: " + opp * opp);
+		// System.out.println("hyp * hyp: " + hyp * hyp);
+		// System.out.println("opp * opp: " + opp * opp);
 		float adj = (float) Math.sqrt(Math.abs(hyp * hyp - opp * opp));
-		System.out.println("adj: " + adj);
-		System.out.println("opp: " + opp);
-		float treeThea = JaMa.pointToThea(delta);
-		float shapeThea = JaMa.pointToThea(new float[] { adj, opp });
+		// System.out.println("adj: " + adj);
+		// System.out.println("opp: " + opp);
+		float treeThea = Vect2d.pointToThea(delta);
+		float shapeThea = Vect2d.pointToThea(new float[] { adj, opp });
 		// how to tell is to subtract or add shape thea.
 		// the two possible points are plus shape thea and minus shape thea
 		// scaled to adjacent and added to play.
@@ -437,20 +460,20 @@ public class OneCirc extends JPanel implements Runnable, MouseListener,
 		// [0 + 1] is (x, y) of plus thea
 		// [2 + 3] is (x, y) of minus thea
 		// [4] is the length from play to each point.
-		System.out.println("treeThea: " + treeThea);
-		System.out.println("shapeThea: " + shapeThea);
-		float addThea = JaMa.theaAdd(treeThea, shapeThea);
-		System.out.println("addThea: " + addThea);
-		float subThea = JaMa.theaSub(treeThea, shapeThea);
-		float[] addPoint = JaMa.theaToPoint(addThea, adj);
-		float[] subPoint = JaMa.theaToPoint(subThea, adj);
+		// System.out.println("treeThea: " + treeThea);
+		// System.out.println("shapeThea: " + shapeThea);
+		float addThea = Vect2d.theaAdd(treeThea, shapeThea);
+		// System.out.println("addThea: " + addThea);
+		float subThea = Vect2d.theaSub(treeThea, shapeThea);
+		float[] addPoint = Vect2d.theaToPoint(addThea, adj);
+		float[] subPoint = Vect2d.theaToPoint(subThea, adj);
 		// make sub thea and plus thea relative to tree.
 		// plus point minus tree
 		float[] relAddPoint = Vect2d.vectSub(Vect2d.vectAdd(play, addPoint),
 				tree);
-		Vect2d.sayVect("play", play);
-		Vect2d.sayVect("addPoint", addPoint);
-		Vect2d.sayVect("relAddPoint", relAddPoint);
+		// Vect2d.sayVect("play", play);
+		// Vect2d.sayVect("addPoint", addPoint);
+		// Vect2d.sayVect("relAddPoint", relAddPoint);
 		float[] relSubPoint = Vect2d.vectSub(Vect2d.vectAdd(play, subPoint),
 				tree);
 		g.setColor(Color.GREEN);
@@ -459,11 +482,11 @@ public class OneCirc extends JPanel implements Runnable, MouseListener,
 		g.setColor(Color.CYAN);
 		g.drawOval((int) (relSubPoint[0] + tree[0]) - 4,
 				(int) (relSubPoint[1] + tree[1]) - 4, 8, 8);
-		float relAddThea = JaMa.pointToThea(relAddPoint);
-		System.out.println("relAddThea: " + relAddThea);
-		float relSubThea = JaMa.pointToThea(relSubPoint);
+		float relAddThea = Vect2d.pointToThea(relAddPoint);
+		// System.out.println("relAddThea: " + relAddThea);
+		float relSubThea = Vect2d.pointToThea(relSubPoint);
 		addPoint = Vect2d.normalize(addPoint);
-		Vect2d.sayVect("addPoint", addPoint);
+		// Vect2d.sayVect("addPoint", addPoint);
 		subPoint = Vect2d.normalize(subPoint);
 		System.out.println("subPoint[0]: " + subPoint[0]);
 		return new float[] { addPoint[0], addPoint[1], relAddThea, subPoint[0],
@@ -474,6 +497,13 @@ public class OneCirc extends JPanel implements Runnable, MouseListener,
 	 * Methods go above here.
 	 * 
 	 */
+
+	void drawGrid() {
+		int xtimes = width / (width % 25);
+		for (int x = 0; x < xtimes; x++) {
+
+		}
+	}
 
 	public long timer() {
 		return System.currentTimeMillis() - startTime;
@@ -493,6 +523,8 @@ public class OneCirc extends JPanel implements Runnable, MouseListener,
 			setPath = true;
 			tarX = me.getX();
 			tarY = me.getY();
+			g.setColor(Color.RED);
+			g.drawOval((int) tarX - 2, (int) tarY - 2, 4, 4);
 		} else {
 			// moving = false;
 			setPath = false;

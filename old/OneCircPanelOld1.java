@@ -1,4 +1,4 @@
-package ColePole;
+package ColePole.old;
 
 import java.awt.Color;
 import java.awt.Dimension;
@@ -13,8 +13,11 @@ import java.awt.image.BufferedImage;
 
 import javax.swing.JPanel;
 
-public class OneCircPanelOld1 extends JPanel implements Runnable, MouseListener,
-		KeyListener {
+import ColePole.lib.JaMa;
+import ColePole.lib.Vect2d;
+
+public class OneCircPanelOld1 extends JPanel implements Runnable,
+		MouseListener, KeyListener {
 
 	int width = 540;
 	int height = 450;
@@ -60,7 +63,7 @@ public class OneCircPanelOld1 extends JPanel implements Runnable, MouseListener,
 	boolean moving = false;
 	int lowest = 0;
 
-	public Panel() {
+	public OneCircPanelOld1() {
 		super();
 
 		setPreferredSize(new Dimension(width, height));
