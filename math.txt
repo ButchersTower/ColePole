@@ -1,0 +1,1 @@
+x^2 - 2x*tx + tx^2 + ((vectY / vectX) (x - circX) + vectY)^2 - 2*((vectY / vectX) (x - playX) + playY)*tx + tx^2 - (pR + tR)^2

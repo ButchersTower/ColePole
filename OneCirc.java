@@ -541,6 +541,35 @@ public class OneCirc extends JPanel implements Runnable, MouseListener,
 				(int) (radius * 2), (int) (radius * 2));
 	}
 
+	float[] quadEq(float a, float b, float c) {
+		float ans1 = (float) (-b + Math.sqrt(b * b - 4 * a * c)) / (2 * a);
+		float ans2 = (float) (-b - Math.sqrt(b * b - 4 * a * c)) / (2 * a);
+		float[] answ = new float[0];
+		try {
+			answ = JaMa.appendFloatAr(answ, ans1);
+		} catch (Exception ex) {
+		}
+		try {
+			answ = JaMa.appendFloatAr(answ, ans2);
+		} catch (Exception ex) {
+		}
+		return answ;
+	}
+
+	void scalarOfVectOnCirc(float[] play, float playR, float[] circ,
+			float circR, float[] vect) {
+		// get point slope formula of the vect.
+		// relative 0? for now.
+		// y = (vectY / vectX) ( x - playX) + playY
+		// (x - tx)^2 + (y - ty)^2 = (pR + tR)^2
+		// (x - tx)^2 + (y - ty)^2 - (pR + tR)^2 = 0
+		// simplify to a quadratic then use formula.
+		// (x - tx)^2 = x^2 - 2xtx + tx^2
+		// x^2 - 2x*tx + tx^2 + ((vectY / vectX) (x - playX) + playY)^2 -
+		// 2*((vectY / vectX) (x - circX) + vectY)*tx + tx^2 - (pR + tR)^2 = 0
+
+	}
+
 	/**
 	 * Methods go above here.
 	 * 
@@ -579,7 +608,12 @@ public class OneCirc extends JPanel implements Runnable, MouseListener,
 		}
 		pathing = false;
 
-		tang2circ(new float[] { 100, 100 }, 50, new float[] { 25, 200 }, 25);
+		// tang2circ(new float[] { 100, 100 }, 50, new float[] { 25, 200 }, 25);
+		float[] quad = quadEq(82, -906, 2493);
+		System.out.println("quad[0]: " + quad[0]);
+		System.out.println("quad[1]: " + quad[1]);
+		scalarOfVectOnCirc(new float[] { 5, 1 }, 1, new float[] { 3, 6 }, 3,
+				new float[] { 1, 9 });
 	}
 
 	@Override
