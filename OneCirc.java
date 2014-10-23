@@ -508,8 +508,31 @@ public class OneCirc extends JPanel implements Runnable, MouseListener,
 				+ midPoint[1] - 2), 4, 4);
 
 		// get four tangent points.
-		ta
+		float[] al1 = myAngleThing(Vect2d.vectAdd(midPoint, c1Loc), 0, c1Loc,
+				c1r);
+		float[] al2 = myAngleThing(Vect2d.vectAdd(midPoint, c1Loc), 0, c2Loc,
+				c2r);
+		Vect2d.sayVect("midPoint", midPoint);
+		System.out.println("al1 (" + al1[0] + ", " + al1[1] + ", " + al1[2]
+				+ ", " + al1[3] + ", " + al1[4] + ", " + al1[5] + ", " + al1[6]
+				+ ")");
+		g.drawLine((int) (c1Loc[0] + midPoint[0]),
+				(int) (c1Loc[1] + midPoint[1]),
+				(int) (c1Loc[0] + midPoint[0] + al1[0] * al1[6]),
+				(int) (c1Loc[1] + midPoint[1] + al1[1] * al1[6]));
+		g.drawLine((int) (c1Loc[0] + midPoint[0]),
+				(int) (c1Loc[1] + midPoint[1]),
+				(int) (c1Loc[0] + midPoint[0] + al1[3] * al1[6]),
+				(int) (c1Loc[1] + midPoint[1] + al1[4] * al1[6]));
 
+		g.drawLine((int) (c1Loc[0] + midPoint[0]),
+				(int) (c1Loc[1] + midPoint[1]),
+				(int) (c1Loc[0] + midPoint[0] + al2[0] * al2[6]),
+				(int) (c1Loc[1] + midPoint[1] + al2[1] * al2[6]));
+		g.drawLine((int) (c1Loc[0] + midPoint[0]),
+				(int) (c1Loc[1] + midPoint[1]),
+				(int) (c1Loc[0] + midPoint[0] + al2[3] * al2[6]),
+				(int) (c1Loc[1] + midPoint[1] + al2[4] * al2[6]));
 	}
 
 	void drawCircle(Color color, float[] circLoc, float radius) {
