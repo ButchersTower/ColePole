@@ -441,7 +441,7 @@ public class OneCirc extends JPanel implements Runnable, MouseListener,
 
 	float[] myAngleThing(float[] play, float pRad, float[] tree, float tRad) {
 		// if |delta| < pRad + tRad
-		// get thea of play and project it out from tree to a dist of pRad+tRad.
+		// get thea of tar and project it out from tree to a dist of pRad+tRad.
 		// This is the plusPoint and subPoint.
 		float[] delta = Vect2d.vectSub(tree, play);
 		float hyp = Vect2d.norm(delta);
@@ -558,6 +558,10 @@ public class OneCirc extends JPanel implements Runnable, MouseListener,
 
 	void scalarOfVectOnCirc(float[] play, float playR, float[] circ,
 			float circR, float[] vect) {
+		/**
+		 * Need to handle is vectX is zero.
+		 */
+
 		// get point slope formula of the vect.
 		// relative 0? for now.
 		// y = (vectY / vectX) ( x - playX) + playY
@@ -567,6 +571,24 @@ public class OneCirc extends JPanel implements Runnable, MouseListener,
 		// (x - tx)^2 = x^2 - 2xtx + tx^2
 		// x^2 - 2x*tx + tx^2 + ((vectY / vectX) (x - playX) + playY)^2 -
 		// 2*((vectY / vectX) (x - circX) + vectY)*tx + tx^2 - (pR + tR)^2 = 0
+		// float xinter = vect[0] * -play[1] / vect[1] + play[0];
+		float yinter = vect[1] * -play[0] / vect[0] + play[1];
+		System.out.println("xinter: " + yinter);
+		float m = vect[1] / vect[0];
+		float a = m * m + 1;
+		// float b = 2 * (m * xinter + m * circ[1] - circ[1]);
+		// float b = -2 * circ[0] + 2 * m * xinter - 2 * m * circ[1];
+		float b = 2 * m * yinter - 2 * circ[0] - 2 * m * circ[1];
+		// float c = 2 * circ[1] * circ[1] - 2 * yinter * circ[1] + yinter
+		// * yinter;
+		float c = circ[0] * circ[0] + yinter * yinter + circ[1] * circ[1] - 2
+				* yinter * circ[1] - (playR + circR) * (playR + circR);
+		System.out.println("(a, b, c) : (" + a + ", " + b + ", " + c + ")");
+		float[] quad = quadEq(a, b, c);
+		System.out.println("quad[0]: " + quad[0]);
+		System.out.println("quad[1]: " + quad[1]);
+		// subtract playLoc from quad. or dont.
+		// use x to get vect y. or use x to get scalar of vect.
 
 	}
 
@@ -610,8 +632,8 @@ public class OneCirc extends JPanel implements Runnable, MouseListener,
 
 		// tang2circ(new float[] { 100, 100 }, 50, new float[] { 25, 200 }, 25);
 		float[] quad = quadEq(82, -906, 2493);
-		System.out.println("quad[0]: " + quad[0]);
-		System.out.println("quad[1]: " + quad[1]);
+		// System.out.println("quad[0]: " + quad[0]);
+		// System.out.println("quad[1]: " + quad[1]);
 		scalarOfVectOnCirc(new float[] { 5, 1 }, 1, new float[] { 3, 6 }, 3,
 				new float[] { 1, 9 });
 	}

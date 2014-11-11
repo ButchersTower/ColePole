@@ -6,7 +6,7 @@ public class ColePole extends JFrame {
 	public ColePole() {
 		JFrame frame = new JFrame();
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		frame.setContentPane(new OneCirc());
+		frame.setContentPane(new PolyCirc());
 		frame.pack();
 		frame.setVisible(true);
 		frame.setResizable(false);
