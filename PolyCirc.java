@@ -20,7 +20,7 @@ import ColePole.lib.Vect2d;
 public class PolyCirc extends JPanel implements Runnable, MouseListener,
 		KeyListener {
 
-	// FOR GOING AROUND EDGE IN PATH[] IT HAS 5 VARIABLES INSTEAD OF 4 LIKE THE
+	// FOR GOING AROUND EDGE IN PATH[] IT HAS 5 VARIABLES INSTEAD OF 4-LIKE THE
 	// OLD PROGRAM.
 
 	// One moving player circle
@@ -275,9 +275,12 @@ public class PolyCirc extends JPanel implements Runnable, MouseListener,
 			// the return to the other copy.
 			System.out.println("alP.l: " + allPaths.length);
 			System.out.println("alP[0].l: " + allPaths[0].length);
+			// makes a copy of focus path
 			allPaths = JaMa.appendFloatArAr(allPaths, allPaths[focus]);
+			// stick add to focus path
 			allPaths[focus] = JaMa.appendArFloatAr(allPaths[focus],
 					reurnTempList[0]);
+			// stick sub to new focus copy
 			allPaths[allPaths.length - 1] = JaMa.appendArFloatAr(
 					allPaths[allPaths.length - 1], reurnTempList[1]);
 			moving = true;
@@ -464,11 +467,133 @@ public class PolyCirc extends JPanel implements Runnable, MouseListener,
 	}
 
 	// This method just returns to be put into allPaths
-	float[] makePathOne(float[] tarLoc, float[] tempLoc) {
+	float[][] makePathOne(float[] tarLoc, float[] tempLoc) {
 		int treeIndex = segmentInterAnyTree(new float[][] { tempLoc, tarLoc });
 		if (treeIndex < 0) {
-			return new float[] {0, tarLoc[0], tarLoc[1], 
+			float[] delta = Vect2d.vectSub(tarLoc, tempLoc);
+			float deltaa = Vect2d.norm(delta);
+			delta = Vect2d.vectDivScalar(deltaa, delta);
+			return new float[][] { { 0, delta[0], delta[1], deltaa } };
+		} else {
+			float[] tanPs = getTangentPointsTrim(tempLoc, pRadius, new float[] {
+					trees[treeIndex][0], trees[treeIndex][1] },
+					trees[treeIndex][2]);
+			// check both paths.
+			// if it intersects then forget about the old circ and start over on
+			// the new one.
+			// these should be the deltas since tanPs should be rel play.
+			float[] addP = Vect2d.vectMultScalar(tanPs[6], new float[] {
+					tanPs[0], tanPs[1] });
+			float[] subP = Vect2d.vectMultScalar(tanPs[6], new float[] {
+					tanPs[3], tanPs[4] });
+
+			int addTreeIndex = segmentInterAnyTree(new float[][] { tempLoc,
+					Vect2d.vectAdd(tempLoc, addP) });
+			if (addTreeIndex < 0) {
+				// do circ part
+			} else {
+				// 
+			}
+
+			int subTreeIndex = segmentInterAnyTree(new float[][] { tempLoc,
+					Vect2d.vectAdd(tempLoc, subP) });
+			if (subTreeIndex < 0) {
+
+			}
+
+			// float[][] reurnTempList = doTreeTrim(pLoc, new float[] {
+			// tarLoc[0], tarLoc[1] }, treeIndex);
+
+			// straight line to tan point.
+			// angle around circ.
+			// straight line to tar.
+
+			// return reurnTempList;
 		}
+		// Shouldn't be here.
+		return new float[][] { { 1 } };
+	}
+
+	// Figure out two lines tangent of circ.
+	// check them for intersect. If so forget about the old circ and start over
+	// from this one.
+	float[][] doTreeTrim(float[] playLoc, float[] tarLoc, int treeIndex) {
+		float[] tangents = getTangentPoints(playLoc, pRadius,
+				trees[(int) treeIndex], trees[(int) treeIndex][2]);
+
+		/**
+		 * Straight line to tan point on circ
+		 */
+		float[][] tempList = new float[0][0];
+		tempList = JaMa.appendFloatArAr(tempList, new float[] { 0, tangents[0],
+				tangents[1], tangents[6] });
+		tempList = JaMa.appendFloatArAr(tempList, new float[] { 0, tangents[3],
+				tangents[4], tangents[6] });
+
+		/**
+		 * start of circle part
+		 */
+		tempList[0] = JaMa.appendArFloatAr(tempList[0], new float[] { 1,
+				tangents[2] });
+		tempList[1] = JaMa.appendArFloatAr(tempList[1], new float[] { 1,
+				tangents[5] });
+
+		tangents = getTangentPoints(tarLoc, pRadius, new float[] {
+				trees[treeIndex][0], trees[treeIndex][1] }, trees[treeIndex][2]);
+		// System.out.println("tangents[2]: " + tangents[2]);
+		// System.out.println("tangents[5]: " + tangents[5]);
+		// tangents from tar
+		// plusThea from player should get subThea from tar.
+		/**
+		 * End of circle part
+		 */
+		tempList[0] = JaMa.appendArFloatAr(tempList[0], new float[] {
+				tangents[5], pRadius + trees[treeIndex][2], treeIndex });
+		tempList[1] = JaMa.appendArFloatAr(tempList[1], new float[] {
+				tangents[2], pRadius + trees[treeIndex][2], treeIndex });
+
+		/**
+		 * Straight line ending up back to target.
+		 */
+		tempList[0] = JaMa.appendArFloatAr(tempList[0], new float[] { 0,
+				-tangents[3], -tangents[4], tangents[6] });
+		tempList[1] = JaMa.appendArFloatAr(tempList[1], new float[] { 0,
+				-tangents[0], -tangents[1], tangents[6] });
+		return tempList;
+	}
+
+	float[] getTangentPointsTrim(float[] playLoc, float pRad, float[] treeLoc,
+			float tRad) {
+		// Plug in play circle and tree circle, return the two lines from
+		// playLoc to the points tangent tree.
+		// I BELIEIVE ALL POINTS ARE RELATIVE PLAYER
+		// [0 + 1] is (x, y) of add thea NOMALIZED
+		// [2] is the tan point's thea on tree of add.
+		// [3 + 4] is (x, y) of sub thea NOMALIZED
+		// [5] is the tan point's thea on tree of sub.
+		// [6] is the length from play to each point.
+		float[] delta = Vect2d.vectSub(treeLoc, playLoc);
+		float hyp = Vect2d.norm(delta);
+		float opp = pRad + tRad;
+		float adj = (float) Math.sqrt(hyp * hyp - opp * opp);
+		float treeThea = Vect2d.pointToThea(delta);
+		float shapeThea = Vect2d.pointToThea(new float[] { adj, opp });
+		float addThea = Vect2d.theaAdd(treeThea, shapeThea);
+		float subThea = Vect2d.theaSub(treeThea, shapeThea);
+		float[] addPoint = Vect2d.theaToPoint(addThea, adj);
+		float[] subPoint = Vect2d.theaToPoint(subThea, adj);
+		// make sub thea and plus thea relative to tree.
+		// plus point minus tree
+		float[] relAddPoint = Vect2d.vectSub(Vect2d.vectAdd(playLoc, addPoint),
+				treeLoc);
+		float[] relSubPoint = Vect2d.vectSub(Vect2d.vectAdd(playLoc, subPoint),
+				treeLoc);
+		float relAddThea = Vect2d.pointToThea(relAddPoint);
+		float relSubThea = Vect2d.pointToThea(relSubPoint);
+		addPoint = Vect2d.normalize(addPoint);
+		subPoint = Vect2d.normalize(subPoint);
+		return new float[] { addPoint[0], addPoint[1], relAddThea, subPoint[0],
+				subPoint[1], relSubThea, adj };
 	}
 
 	/**
@@ -657,9 +782,10 @@ public class PolyCirc extends JPanel implements Runnable, MouseListener,
 	float[] getTangentPoints(float[] play, float pRad, float[] tree, float tRad) {
 		// Plug in play circle and tree circle, return the two lines from
 		// playLoc to the points tangent tree.
-		// [0 + 1] is (x, y) of add thea
+		// I BELIEIVE ALL POINTS ARE RELATIVE PLAYER
+		// [0 + 1] is (x, y) of add thea NOMALIZED
 		// [2] is the tan point's thea on tree of add.
-		// [3 + 4] is (x, y) of sub thea
+		// [3 + 4] is (x, y) of sub thea NOMALIZED
 		// [5] is the tan point's thea on tree of sub.
 		// [6] is the length from play to each point.
 		float[] delta = Vect2d.vectSub(tree, play);
