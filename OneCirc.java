@@ -630,7 +630,7 @@ public class OneCirc extends JPanel implements Runnable, MouseListener,
 		}
 		pathing = false;
 
-		// tang2circ(new float[] { 100, 100 }, 50, new float[] { 25, 200 }, 25);
+		 tang2circ(new float[] { 100, 100 }, 50, new float[] { 25, 200 }, 25);
 		float[] quad = quadEq(82, -906, 2493);
 		// System.out.println("quad[0]: " + quad[0]);
 		// System.out.println("quad[1]: " + quad[1]);
