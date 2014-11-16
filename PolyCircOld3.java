@@ -17,7 +17,7 @@ import javax.swing.JPanel;
 import ColePole.lib.JaMa;
 import ColePole.lib.Vect2d;
 
-public class PolyCirc extends JPanel implements Runnable, MouseListener,
+public class PolyCircOld3 extends JPanel implements Runnable, MouseListener,
 		KeyListener {
 
 	// FOR GOING AROUND EDGE IN PATH[] IT HAS 5 VARIABLES INSTEAD OF 4-LIKE THE
@@ -57,16 +57,13 @@ public class PolyCirc extends JPanel implements Runnable, MouseListener,
 	float playSpeed = 12;
 
 	// 0 = x, 1 = y, 2 = radius
-	// float[][] trees = { { 200, 100, 40 }, { 250, 210, 30 }, { 220, 310, 30 }
-	// };
-
-	float[][] trees = { { 200, 160, 40 }, { 180, 270, 30 } };
+	float[][] trees = { { 200, 100, 40 }, { 250, 210, 30 }, { 220, 310, 30 } };
 
 	int[] tarLoc = new int[2];
 
 	float[] path = new float[0];
 
-	public PolyCirc() {
+	public PolyCircOld3() {
 		super();
 
 		setPreferredSize(new Dimension(width, height));
@@ -116,9 +113,6 @@ public class PolyCirc extends JPanel implements Runnable, MouseListener,
 			drawScene();
 
 			if (makePath) {
-				moving = false;
-				makePath(pLoc, new float[] { (float) tarLoc[0],
-						(float) tarLoc[1] }, 0);
 				makePath = false;
 			}
 
@@ -178,10 +172,11 @@ public class PolyCirc extends JPanel implements Runnable, MouseListener,
 
 	void clickHande() {
 		if (mC) {
-			System.out.println("** click **");
 			if (clickInfo[2] == 3) {
 				tarLoc[0] = clickInfo[0];
 				tarLoc[1] = clickInfo[1];
+				makePath(pLoc, new float[] { (float) tarLoc[0],
+						(float) tarLoc[1] });
 				makePath = true;
 			}
 			// scalarOfVectOnCirc(new float[] { 5, 1 }, 1, new float[] { 3, 6 },
@@ -203,11 +198,8 @@ public class PolyCirc extends JPanel implements Runnable, MouseListener,
 		System.out.println(Vect2d.pointToThea(deg45neg));
 	}
 
-	ArrayList<float[]> paths = new ArrayList<float[]>();
-
-	void makePath(float[] tempLoc, float[] finTarLoc, int pathIndex) {
-		System.out.println("makePath");
-		paths.clear();
+	void makePath(float[] tempLoc, float[] finTarLoc) {
+		float[][] paths = new float[0][];
 		float[] curTarLoc = finTarLoc.clone();
 		int oldTreeIndex = segmentInterAnyTree(new float[][] { tempLoc,
 				finTarLoc });
@@ -216,145 +208,101 @@ public class PolyCirc extends JPanel implements Runnable, MouseListener,
 			float deltaa = Vect2d.norm(Vect2d.vectSub(finTarLoc, tempLoc));
 			float[] delta = Vect2d.vectDivScalar(deltaa,
 					Vect2d.vectSub(finTarLoc, tempLoc));
-			// System.out.println("add straight path");
 			path = new float[] { 0, delta[0], delta[1], deltaa };
 			return;
 		} else {
-			// intersection so 2 paths off the bat.
-			paths.add(splitLoopOne(tempLoc, oldTreeIndex, finTarLoc, pathIndex));
-			// loopOne(tempLoc, oldTreeIndex, finTarLoc, pathIndex);
-			sortPaths();
-
-			// pick shortest path and set it as path.
-			// then set moving
+			path = loopOne(tempLoc, oldTreeIndex, finTarLoc, paths);
 			moving = true;
 			return;
 		}
 	}
 
-	// It makes 2 paths initially if there is a collision.
-	// It then builds them.
-	// So one path needs to be ultimately returned to the first loopOne.
-	// Everything else just makes more paths, copies what it had already made.
-	// And build it independently so it gets passed down in the end.
-
-	float[] splitLoopOne(float[] tempLoc, int oldTreeIndex, float[] finTarLoc,
-			int pathIndex) {
-		System.out.println("*splitLoopOne: " + pathIndex);
-		// relative tempLoc
-		float[][] tangentPoints = getTangentPoints(tempLoc, pRadius,
-				trees[oldTreeIndex], trees[oldTreeIndex][2]);
-		// paths.set( pathIndex, loopOne(tempLoc, oldTreeIndex, finTarLoc,
-		// tangentPoints[0], pathIndex, true));
-
-		int newIndex = paths.size();
-		paths.add(loopOne(tempLoc, oldTreeIndex, finTarLoc, tangentPoints[1],
-				newIndex, false));
-
-		return loopOne(tempLoc, oldTreeIndex, finTarLoc, tangentPoints[0],
-				pathIndex, true);
-	}
-
 	float[] loopOne(float[] tempLoc, int oldTreeIndex, float[] finTarLoc,
-			float[] tangentPoint, int pathIndex, boolean add) {
-		System.out.println("*loopOne: " + pathIndex);
+			float[][] paths) {
+		// gets tangent circ from point.
+		float[] tangentPoints = getTangentPoints(tempLoc, pRadius,
+				trees[oldTreeIndex], trees[oldTreeIndex][2]);
 
-		int newTreeIndex = segmentInterAnyTreeIgnore(new float[][] { tempLoc,
-				tangentPoint }, oldTreeIndex);
+		float[] tempsTan = Vect2d.vectAdd(tempLoc, new float[] {
+				tangentPoints[0], tangentPoints[1] });
+		int newTreeIndexAdd = segmentInterAnyTreeIgnore(new float[][] {
+				tempLoc, tempsTan }, oldTreeIndex);
 
-		if (newTreeIndex < 0) {
+		if (newTreeIndexAdd < 0) {
 			// there are no trees in the way to the tangent point of
 			// oldTreeIndex
 			// loopTwo(tempLoc, oldTreeIndex, finTarLoc);
-			drawCircle(Color.RED, Vect2d.vectAdd(tempLoc, tangentPoint), 6);
-			float deltaa = Vect2d.norm(tangentPoint);
-			float[] delta = Vect2d.vectDivScalar(deltaa, tangentPoint);
+			drawCircle(Color.RED, Vect2d.vectAdd(tempLoc, tangentPoints), 6);
+			float deltaa = Vect2d.norm(tangentPoints);
+			float[] delta = Vect2d.vectDivScalar(deltaa, tangentPoints);
 			// give thea of tanP rel tree
 			// point to thea (tree - (tempL + tanP))
 			float thea = Vect2d
 					.pointToThea((Vect2d.vectSub(
-							Vect2d.vectAdd(tempLoc, tangentPoint),
+							Vect2d.vectAdd(tempLoc, tangentPoints),
 							trees[oldTreeIndex])));
-			// float[] nextPart = loop1noInter(tempLoc, oldTreeIndex, finTarLoc,
-			// thea, 1);
-			float[] nextPart = pathBack(tempLoc, oldTreeIndex, finTarLoc, thea,
-					pathIndex, add);
-
+			float[] nextPart = loop1noInter(tempLoc, oldTreeIndex, finTarLoc,
+					thea);
 			return JaMa.appendArFloatAr(new float[] { 0, delta[0], delta[1],
 					deltaa }, nextPart);
 		} else {
-			// it splits in here.
-			return splitLoopOne(tempLoc, newTreeIndex, finTarLoc, pathIndex);
-			// do i set path 0 and path 1? Because it creats more paths in later
-			// methods.
-			// I need to pass along currentPath and whenever i make a new one
-			// just copy current and add it to the end, then build the rest.
-			// return new float[0];
-		}
-	}
-
-	float[] pathBack(float[] tempLoc, int oldTreeIndex, float[] finTarLoc,
-			float entraceThea, int pathIndex, boolean add) {
-		System.out.println("*pathBack: " + pathIndex);
-		float[][] tangentPoints = getTangentPoints(finTarLoc, pRadius,
-				trees[oldTreeIndex], trees[oldTreeIndex][2]);
-
-		// invert pathBack and do tree detection.
-		int newTreeIndex;
-		float[] tanPoint;
-		if (add) {
-			tanPoint = Vect2d.vectAdd(finTarLoc, tangentPoints[1]);
-			float[][] seg = new float[][] { tanPoint, finTarLoc };
-			newTreeIndex = segmentInterAnyTreeIgnore(seg, oldTreeIndex);
-		} else {
-			tanPoint = Vect2d.vectAdd(finTarLoc, tangentPoints[0]);
-			float[][] seg = new float[][] { tanPoint, finTarLoc };
-			newTreeIndex = segmentInterAnyTreeIgnore(seg, oldTreeIndex);
-		}
-		if (newTreeIndex < 0) {
-			float[] pointRelTree = Vect2d
-					.vectSub(tanPoint, trees[oldTreeIndex]);
-			float thea = Vect2d.pointToThea(pointRelTree);
-
-			// make arc section and return arc + final straight.
-			float deltaa;
-			float[] delta;
-			if (add) {
-				deltaa = Vect2d.norm(tangentPoints[1]);
-				delta = Vect2d.vectDivScalar(-deltaa, tangentPoints[1]);
-			} else {
-				deltaa = Vect2d.norm(tangentPoints[0]);
-				delta = Vect2d.vectDivScalar(-deltaa, tangentPoints[0]);
-			}
-
-			float[] path = { 1, entraceThea, thea,
-					trees[oldTreeIndex][2] + pRadius, oldTreeIndex, 0,
-					delta[0], delta[1], deltaa };
-			return path;
-		} else {
-			// intersection, split into
-			// outside tangents
-			// inside tangents
-			circCircTans(oldTreeIndex, newTreeIndex, add);
-
+			loopOne(tempLoc, newTreeIndexAdd, finTarLoc, paths);
 			return new float[0];
 		}
 	}
 
-	void circCircTans(int oldTreeLoc, int newTreeLoc, boolean add) {
-		float[][] innerSeg = tan2circ(trees[oldTreeLoc], trees[oldTreeLoc][2],
-				trees[newTreeLoc], trees[newTreeLoc][2], add);
+	float[] loop1noInter(float[] tempLoc, int oldTreeIndex, float[] curTarLoc,
+			float entraceThea) {
+		// straight line to tanPoint is good, need to figure angle of that point
+		// relative tree.
+		// CurTarLoc - OldTreeIndex (tangent points)
+		// Invert that path before doing intersection detection.
+		float[] tangentPoints = getTangentPoints(curTarLoc, pRadius,
+				trees[oldTreeIndex], trees[oldTreeIndex][2]);
 
-		// float[][] outerSeg =
-		getOuterAdjTrim(trees[oldTreeLoc], trees[oldTreeLoc][2] + pRadius,
-				trees[newTreeLoc], trees[newTreeLoc][2] + pRadius, add);
+		float[] tarsTanAdd = Vect2d.vectAdd(curTarLoc, new float[] {
+				tangentPoints[0], tangentPoints[1] });
+		float[] tanPneg = new float[] { tangentPoints[2], tangentPoints[3] };
+		float[] tarsTanSub = Vect2d.vectAdd(curTarLoc, tanPneg);
+		drawCircle(Color.YELLOW, tarsTanSub, 6);
+		drawCircle(Color.RED, curTarLoc, 6);
+		int newTreeIndexAdd = segmentInterAnyTreeIgnore(new float[][] {
+				tarsTanAdd, curTarLoc }, oldTreeIndex);
+		int newTreeIndexSub = segmentInterAnyTreeIgnore(new float[][] {
+				tarsTanSub, curTarLoc }, oldTreeIndex);
+		// tangentPoints is currently relative
+		if (newTreeIndexSub < 0) {
+			System.out.println("oldTreeIndex: " + oldTreeIndex);
+			// there are no trees in the way to the tangent point of
+			// oldTreeIndex
+			float exitThea = Vect2d.pointToThea((Vect2d.vectSub(tarsTanSub,
+					trees[oldTreeIndex])));
+			System.out.println("entraceThea: " + entraceThea);
+			System.out.println("exitThea: " + exitThea);
+			float[] part = { 1, entraceThea, exitThea,
+					trees[oldTreeIndex][2] + pRadius, oldTreeIndex };
 
-		// float[] inner = {
+			float deltaa = Vect2d.norm(tanPneg);
+			float[] delta = Vect2d.vectDivScalar(-deltaa, tanPneg);
+
+			part = JaMa.appendArFloatAr(part, new float[] { 0, delta[0],
+					delta[1], deltaa });
+			return part;
+		} else {
+			// leaving the initial circle it collides with another circle.
+			// 2 paths, inner line tan circs. outer line tan circs.
+			// float[] innerLineTan
+			// tang2circ(trees[oldTreeIndex], trees[oldTreeIndex][2] + pRadius,
+			// trees[newTreeIndexAdd], trees[newTreeIndexAdd][2] + pRadius);
+			return loopTwo(tempLoc, oldTreeIndex, newTreeIndexSub, curTarLoc,
+					entraceThea, true);
+		}
+		// return new float[0];
 	}
 
 	float[] loopTwo(float[] tempLoc, int oldTreeIndex, int newTreeIndex,
 			float[] curTarLoc, float entraceThea, boolean add) {
-		System.out.println("loopTwo");
+
 		// leaving the initial circle it collides with another circle.
 		// 2 paths, inner line tan circs. outer line tan circs.
 		// float[] innerLineTan
@@ -362,7 +310,7 @@ public class PolyCirc extends JPanel implements Runnable, MouseListener,
 		// this is inner circ
 		// Want to get back: segment,
 		// exit thea of old tree entrance thea of new tree?
-		float[][] seg = tan2circ(trees[oldTreeIndex], trees[oldTreeIndex][2]
+		float[][] seg = tang2circ(trees[oldTreeIndex], trees[oldTreeIndex][2]
 				+ pRadius, trees[newTreeIndex], trees[newTreeIndex][2]
 				+ pRadius, add);
 
@@ -374,7 +322,7 @@ public class PolyCirc extends JPanel implements Runnable, MouseListener,
 			float[] exitRelOld = Vect2d.vectSub(seg[0], trees[oldTreeIndex]);
 			float exitThea = Vect2d.pointToThea(exitRelOld);
 
-			float[] entrRelNew = Vect2d.vectSub(seg[1], trees[newTreeIndex]);
+			float[] entrRelNew = Vect2d.vectSub(seg[0], trees[newTreeIndex]);
 			float entrThea = Vect2d.pointToThea(entrRelNew);
 
 			float[] delta = Vect2d.vectSub(seg[1], seg[0]);
@@ -386,17 +334,8 @@ public class PolyCirc extends JPanel implements Runnable, MouseListener,
 					trees[oldTreeIndex][2] + pRadius, oldTreeIndex, 0,
 					delta[0], delta[1], deltaa };
 			System.out.println("2: new: " + newTreeIndex);
-			if (add) {
-				return JaMa.appendArFloatAr(
-						part,
-						loop1noInter(tempLoc, newTreeIndex, curTarLoc,
-								entrThea, 0));
-			} else {
-				return JaMa.appendArFloatAr(
-						part,
-						loop1noInter(tempLoc, newTreeIndex, curTarLoc,
-								entrThea, 1));
-			}
+			return JaMa.appendArFloatAr(part,
+					loop1noInter(tempLoc, newTreeIndex, curTarLoc, entrThea));
 		} else {
 			// intersection
 		}
@@ -408,34 +347,7 @@ public class PolyCirc extends JPanel implements Runnable, MouseListener,
 	// Don't normalize before returning
 	// Don't return the magnitude.
 
-	float[][] getTangentPoints(float[] play, float pRad, float[] tree,
-			float tRad) {
-		// Plug in play circle and tree circle, return the two lines from
-		// playLoc to the points tangent tree.
-		// I BELIEIVE ALL POINTS ARE RELATIVE PLAYER
-		// [0 + 1] is add tangent point vect relative to play
-		// [2 + 3] is sub tangent point vect relative to play
-		// [4] is -1 because it is supposed to set tree index outside this
-		// method.
-		float[] delta = Vect2d.vectSub(tree, play);
-		float hyp = Vect2d.norm(delta);
-		float opp = pRad + tRad;
-		float adj = (float) Math.sqrt(hyp * hyp - opp * opp);
-		float treeThea = Vect2d.pointToThea(delta);
-		float shapeThea = Vect2d.pointToThea(new float[] { adj, opp });
-		float addThea = Vect2d.theaAdd(treeThea, shapeThea);
-		float subThea = Vect2d.theaSub(treeThea, shapeThea);
-		float[] addPoint = Vect2d.theaToPoint(addThea, adj);
-		float[] subPoint = Vect2d.theaToPoint(subThea, adj);
-		// make sub thea and plus thea relative to tree.
-		// plus point minus tree
-		drawCircle(Color.ORANGE, Vect2d.vectAdd(play, addPoint), 4);
-		drawCircle(Color.MAGENTA, Vect2d.vectAdd(play, subPoint), 4);
-		return new float[][] { addPoint, subPoint };
-	}
-
-	float[] getTangentPointsOld1(float[] play, float pRad, float[] tree,
-			float tRad) {
+	float[] getTangentPoints(float[] play, float pRad, float[] tree, float tRad) {
 		// Plug in play circle and tree circle, return the two lines from
 		// playLoc to the points tangent tree.
 		// I BELIEIVE ALL POINTS ARE RELATIVE PLAYER
@@ -470,12 +382,10 @@ public class PolyCirc extends JPanel implements Runnable, MouseListener,
 
 	void followPath() {
 		while (path.length > 0 && playSpeedLeft > 0) {
-			System.out.println("path.l: " + path.length);
 			// System.out.println("while");
 			sortFollowPath();
 		}
 		if (path.length == 0) {
-			System.out.println("stop moving");
 			moving = false;
 		}
 	}
@@ -512,8 +422,6 @@ public class PolyCirc extends JPanel implements Runnable, MouseListener,
 		} else if (path[0] == 1) {
 			// System.out.println("path 1");
 			// around edge
-			System.out.println("sub: "
-					+ Math.abs(Vect2d.theaSub(path[1], path[2])));
 			float edgeLength = Math.abs(Vect2d.theaSub(path[1], path[2])
 					* path[3]);
 			// System.out.println("edgeLength: " + edgeLength);
@@ -527,13 +435,7 @@ public class PolyCirc extends JPanel implements Runnable, MouseListener,
 				// newThea = Vect2d.theaAdd(path[1], possableThea);
 				// // add thea
 				// } else {
-				System.out.println("path[1]" + path[1]);
-				System.out.println("path[2]" + path[2]);
-				if (path[1] < path[2]) {
-					newThea = Vect2d.theaAdd(path[1], possableThea);
-				} else {
-					newThea = Vect2d.theaSub(path[1], possableThea);
-				}
+				newThea = Vect2d.theaSub(path[1], possableThea);
 				// sub thea
 				// }
 				path[1] = newThea;
@@ -554,49 +456,6 @@ public class PolyCirc extends JPanel implements Runnable, MouseListener,
 				path = JaMa.removeFirstFloatAr(path, 5);
 				playSpeedLeft -= edgeLength;
 			}
-		}
-	}
-
-	void sortPaths() {
-		float[] sums = new float[paths.size()];
-		// System.out.println("paths.s: " + paths.size());
-		for (int p = 0; p < paths.size(); p++) {
-			// run through each part of the path add up the length.
-			int checkIndex = 0;
-			while (checkIndex < paths.get(p).length) {
-				if (paths.get(p)[checkIndex] == 0) {
-					sums[p] += paths.get(p)[checkIndex + 3];
-					checkIndex += 4;
-				} else if (paths.get(p)[checkIndex] == 1) {
-					// find deltaThea and then multiple that by length.
-					System.out.println("paths.get(" + p + ")[" + checkIndex
-							+ " + 1]: " + paths.get(p)[checkIndex + 1]);
-					System.out.println("paths.get(" + p + ")[" + checkIndex
-							+ " + 2]: " + paths.get(p)[checkIndex + 2]);
-					float arcLength = Math.abs(Vect2d.theaSub(
-							paths.get(p)[checkIndex + 1],
-							paths.get(p)[checkIndex + 2])
-							* paths.get(p)[checkIndex + 3]);
-					System.out.println("arcLength: " + arcLength);
-					sums[p] += arcLength;
-					checkIndex += 5;
-				}
-			}
-		}
-		// pick the shortest path and set it as path.
-		if (sums.length == 0) {
-			path = new float[0];
-		} else {
-			int shortest = 0;
-			System.out.println("sum[0]: " + sums[0]);
-			for (int s = 1; s < sums.length; s++) {
-				System.out.println("sum[" + 1 + "]: " + sums[1]);
-				if (sums[s] < sums[shortest]) {
-					shortest = s;
-				}
-			}
-			path = paths.get(shortest);
-			System.out.println("shortest: " + shortest);
 		}
 	}
 
@@ -833,7 +692,7 @@ public class PolyCirc extends JPanel implements Runnable, MouseListener,
 
 	// I want blue green when going down right.
 	// I only want one of the tangent lines.
-	float[][] tan2circ(float[] c1Loc, float c1r, float[] c2Loc, float c2r,
+	float[][] tang2circ(float[] c1Loc, float c1r, float[] c2Loc, float c2r,
 			boolean add) {
 		// make everything relative c1Loc
 		drawCircle(Color.RED, c1Loc, c1r);
@@ -846,71 +705,37 @@ public class PolyCirc extends JPanel implements Runnable, MouseListener,
 		// mid point is vect * ratio;
 		float[] midPoint = Vect2d.vectMultScalar(c1ratc2, c1toc2);
 		// get tangent of the midpoint on both circles.
+		g.fillOval((int) (c1Loc[0] + midPoint[0] - 2), (int) (c1Loc[1]
+				+ midPoint[1] - 2), 4, 4);
 
-		drawCircle(Color.RED, Vect2d.vectAdd(c1Loc, midPoint), 2);
 		// get four tangent points.
-		float[][] al1 = getTangentPoints(midPoint, 0, new float[] { 0, 0 }, c1r);
-		float[][] al2 = getTangentPoints(midPoint, 0, c1toc2, c2r);
+		float[] al1 = getTangentPoints(midPoint, 0, new float[] { 0, 0 }, c1r);
+		float[] al2 = getTangentPoints(midPoint, 0, c1toc2, c2r);
 		if (!add) {
-
-			drawLine(new Color(255, 255, 255), new float[] {
-					c1Loc[0] + midPoint[0] + al1[0][0],
-					c1Loc[1] + midPoint[1] + al1[0][1] }, new float[] {
-					c1Loc[0] + midPoint[0] + al2[0][0],
-					c1Loc[1] + midPoint[1] + al2[0][1] });
+			g.setColor(new Color(255, 255, 255));
+			drawLine(new float[] { c1Loc[0] + midPoint[0] + al1[0],
+					c1Loc[1] + midPoint[1] + al1[1] }, new float[] {
+					c1Loc[0] + midPoint[0] + al2[0],
+					c1Loc[1] + midPoint[1] + al2[1] });
 			float[][] fag = {
-					new float[] { c1Loc[0] + midPoint[0] + al1[0][0],
-							c1Loc[1] + midPoint[1] + al1[0][1] },
-					new float[] { c1Loc[0] + midPoint[0] + al2[0][0],
-							c1Loc[1] + midPoint[1] + al2[0][1] } };
+					new float[] { c1Loc[0] + midPoint[0] + al1[0],
+							c1Loc[1] + midPoint[1] + al1[1] },
+					new float[] { c1Loc[0] + midPoint[0] + al2[0],
+							c1Loc[1] + midPoint[1] + al2[1] } };
 			return fag;
 		} else {
-			drawLine(Color.BLUE, new float[] {
-					c1Loc[0] + midPoint[0] + al1[1][0],
-					c1Loc[1] + midPoint[1] + al1[1][1] }, new float[] {
-					c1Loc[0] + midPoint[0] + al2[1][0],
-					c1Loc[1] + midPoint[1] + al2[1][1] });
+			g.setColor(Color.BLUE);
+			drawLine(new float[] { c1Loc[0] + midPoint[0] + al1[2],
+					c1Loc[1] + midPoint[1] + al1[3] }, new float[] {
+					c1Loc[0] + midPoint[0] + al2[2],
+					c1Loc[1] + midPoint[1] + al2[3] });
 			float[][] fag = {
-					new float[] { c1Loc[0] + midPoint[0] + al1[1][0],
-							c1Loc[1] + midPoint[1] + al1[1][1] },
-					new float[] { c1Loc[0] + midPoint[0] + al2[1][0],
-							c1Loc[1] + midPoint[1] + al2[1][1] } };
+					new float[] { c1Loc[0] + midPoint[0] + al1[2],
+							c1Loc[1] + midPoint[1] + al1[3] },
+					new float[] { c1Loc[0] + midPoint[0] + al2[2],
+							c1Loc[1] + midPoint[1] + al2[3] } };
 			return fag;
 		}
-	}
-
-	void outerEdgeOne(float[] soloPart, float[] circ, float[] point,
-			float pointR, boolean add) {
-		float[] partSub = Vect2d.vectAdd(soloPart, point);
-
-		float[] part1Sub = Vect2d.vectSub(partSub, circ);
-		// scale part1 to pointR
-		float[] scaledPart1Sub = Vect2d.scaleVectTo(part1Sub, pointR);
-		// drawLine(circ, Vect2d.vectAdd(circ, part1));
-		// drawLine(circ, Vect2d.vectAdd(partSub, scaledPart1Sub));
-		float[] partOffCircSub = Vect2d.vectAdd(partSub, scaledPart1Sub);
-		float[] pointPlusScaledPart1Sub = Vect2d.vectAdd(point, scaledPart1Sub);
-		float[] tangentLineSub = Vect2d.vectSub(partOffCircSub,
-				pointPlusScaledPart1Sub);
-		if (add) {
-			drawLine(Color.BLUE, pointPlusScaledPart1Sub,
-					Vect2d.vectAdd(pointPlusScaledPart1Sub, tangentLineSub));
-		} else {
-			drawLine(Color.RED, pointPlusScaledPart1Sub,
-					Vect2d.vectAdd(pointPlusScaledPart1Sub, tangentLineSub));
-		}
-	}
-
-	void getOuterAdjTrim(float[] circ, float circRad, float[] point,
-			float pointR, boolean add) {
-		System.out.println("getOuterAdjTrim");
-		float[][] tanPs = getTangentPoints(point, 0, circ, circRad - pointR);
-		// scale vect tree -> tanP to playRadus.
-		// add it to tanP. add it to playLoc.
-		// Make a vect of thoes two points.
-		outerEdgeOne(tanPs[0], circ, point, pointR, true);
-		outerEdgeOne(tanPs[1], circ, point, pointR, false);
-
 	}
 
 	/**
@@ -919,8 +744,6 @@ public class PolyCirc extends JPanel implements Runnable, MouseListener,
 
 	void drawScene() {
 		// testThea();
-		tan2circ(new float[] { 100, 100 }, 20, new float[] { 80, 160 }, 20,
-				false);
 		// draws background
 		if (drawBackground) {
 			g.setColor(Color.BLACK);
@@ -941,8 +764,8 @@ public class PolyCirc extends JPanel implements Runnable, MouseListener,
 				(int) (radius * 2), (int) (radius * 2));
 	}
 
-	void drawLine(Color color, float[] p1, float[] p2) {
-		g.setColor(color);
+	void drawLine(float[] p1, float[] p2) {
+		g.setColor(Color.WHITE);
 		g.drawLine((int) (p1[0] + .5f), (int) (p1[1] + .5f),
 				(int) (p2[0] + .5f), (int) (p2[1] + .5f));
 	}

@@ -1,0 +1,162 @@
+float[][] loopOneOld1(float[] tempLoc, int oldTreeIndex, float[] finTarLoc,
+		int pathIndex) {
+	System.out.println("loopOne");
+	// immediately make 2 paths
+
+	// gets tangent circ from point.
+	float[] tangentPoints = getTangentPoints(tempLoc, pRadius,
+			trees[oldTreeIndex], trees[oldTreeIndex][2]);
+
+	float[] tempsTan = Vect2d.vectAdd(tempLoc, new float[] {
+			tangentPoints[0], tangentPoints[1] });
+	int newTreeIndexAdd = segmentInterAnyTreeIgnore(new float[][] {
+			tempLoc, tempsTan }, oldTreeIndex);
+
+	if (newTreeIndexAdd < 0) {
+		// there are no trees in the way to the tangent point of
+		// oldTreeIndex
+		// loopTwo(tempLoc, oldTreeIndex, finTarLoc);
+		drawCircle(Color.RED, Vect2d.vectAdd(tempLoc, tangentPoints), 6);
+		float deltaa = Vect2d.norm(tangentPoints);
+		float[] delta = Vect2d.vectDivScalar(deltaa, tangentPoints);
+		// give thea of tanP rel tree
+		// point to thea (tree - (tempL + tanP))
+		float thea = Vect2d
+				.pointToThea((Vect2d.vectSub(
+						Vect2d.vectAdd(tempLoc, tangentPoints),
+						trees[oldTreeIndex])));
+		float[] nextPart = loop1noInter(tempLoc, oldTreeIndex, finTarLoc,
+				thea, 1);
+		return new float[][] { JaMa.appendArFloatAr(new float[] { 0,
+				delta[0], delta[1], deltaa }, nextPart) };
+	} else {
+		// it splits in here.
+		loopOne(tempLoc, newTreeIndexAdd, finTarLoc);
+		// do i set path 0 and path 1? Because it creats more paths in later
+		// methods.
+		// I need to pass along currentPath and whenever i make a new one
+		// just copy current and add it to the end, then build the rest.
+		return new float[0][];
+	}
+}
+
+float[] loop1noInter(float[] tempLoc, int oldTreeIndex, float[] curTarLoc,
+		float entraceThea, int index) {
+	System.out.println("loop1noInter");
+	// index = 0 only pursue add.
+	// index = 1 only pursue sub.
+	// index = 2 pursue both add and sub.
+	// straight line to tanPoint is good, need to figure angle of that point
+	// relative tree.
+	// CurTarLoc - OldTreeIndex (tangent points)
+	// Invert that path before doing intersection detection.
+	float[][] tangentPoints = getTangentPoints(curTarLoc, pRadius,
+			trees[oldTreeIndex], trees[oldTreeIndex][2]);
+
+	float[] tarsTanAdd = Vect2d.vectAdd(curTarLoc, new float[] {
+			tangentPoints[0], tangentPoints[1] });
+	float[] tanPpos = new float[] { tangentPoints[0], tangentPoints[1] };
+	float[] tanPneg = new float[] { tangentPoints[2], tangentPoints[3] };
+	float[] tarsTanSub = Vect2d.vectAdd(curTarLoc, tanPneg);
+	drawCircle(Color.YELLOW, tarsTanSub, 6);
+	drawCircle(Color.RED, curTarLoc, 6);
+	int newTreeIndexAdd = segmentInterAnyTreeIgnore(new float[][] {
+			tarsTanAdd, curTarLoc }, oldTreeIndex);
+	int newTreeIndexSub = segmentInterAnyTreeIgnore(new float[][] {
+			tarsTanSub, curTarLoc }, oldTreeIndex);
+	// tangentPoints is currently relative
+	if (index == 0) {
+		return temp(tempLoc, oldTreeIndex, curTarLoc, entraceThea, tanPpos);
+	} else if (index == 1) {
+		return temp(tempLoc, oldTreeIndex, curTarLoc, entraceThea, tanPneg);
+	} else {
+		return temp(tempLoc, oldTreeIndex, curTarLoc, entraceThea, tanPpos);
+		// return temp(tempLoc, oldTreeIndex, curTarLoc, entraceThea,
+		// tanPneg);
+		// return new float[0];
+	}
+}
+
+float[] temp(float[] tempLoc, int oldTreeIndex, float[] curTarLoc,
+		float entraceThea, float[] tarsTan) {
+	System.out.println("*temp");
+	int newTreeIndex = segmentInterAnyTreeIgnore(
+			new float[][] { Vect2d.vectAdd(curTarLoc, tarsTan), curTarLoc },
+			oldTreeIndex);
+	// tangentPoints is currently relative
+	if (newTreeIndex < 0) {
+		System.out.println("oldTreeIndex: " + oldTreeIndex);
+		// there are no trees in the way to the tangent point of
+		// oldTreeIndex
+		float exitThea = Vect2d.pointToThea((Vect2d.vectSub(
+				Vect2d.vectAdd(curTarLoc, tarsTan), trees[oldTreeIndex])));
+		System.out.println("entraceThea: " + entraceThea);
+		System.out.println("exitThea: " + exitThea);
+		float[] part = { 1, entraceThea, exitThea,
+				trees[oldTreeIndex][2] + pRadius, oldTreeIndex };
+
+		float deltaa = Vect2d.norm(tarsTan);
+		float[] delta = Vect2d.vectDivScalar(-deltaa, tarsTan);
+
+		part = JaMa.appendArFloatAr(part, new float[] { 0, delta[0],
+				delta[1], deltaa });
+		return part;
+	} else {
+		// leaving the initial circle it collides with another circle.
+		// 2 paths, inner line tan circs. outer line tan circs.
+		// float[] innerLineTan
+		// tang2circ(trees[oldTreeIndex], trees[oldTreeIndex][2] + pRadius,
+		// trees[newTreeIndexAdd], trees[newTreeIndexAdd][2] + pRadius);
+		return loopTwo(tempLoc, oldTreeIndex, newTreeIndex, curTarLoc,
+				entraceThea, true);
+	}
+}
+
+float[] loop1noInterOld1(float[] tempLoc, int oldTreeIndex,
+		float[] curTarLoc, float entraceThea) {
+	// straight line to tanPoint is good, need to figure angle of that point
+	// relative tree.
+	// CurTarLoc - OldTreeIndex (tangent points)
+	// Invert that path before doing intersection detection.
+	float[] tangentPoints = getTangentPoints(curTarLoc, pRadius,
+			trees[oldTreeIndex], trees[oldTreeIndex][2]);
+
+	float[] tarsTanAdd = Vect2d.vectAdd(curTarLoc, new float[] {
+			tangentPoints[0], tangentPoints[1] });
+	float[] tanPneg = new float[] { tangentPoints[2], tangentPoints[3] };
+	float[] tarsTanSub = Vect2d.vectAdd(curTarLoc, tanPneg);
+	drawCircle(Color.YELLOW, tarsTanSub, 6);
+	drawCircle(Color.RED, curTarLoc, 6);
+	int newTreeIndexAdd = segmentInterAnyTreeIgnore(new float[][] {
+			tarsTanAdd, curTarLoc }, oldTreeIndex);
+	int newTreeIndexSub = segmentInterAnyTreeIgnore(new float[][] {
+			tarsTanSub, curTarLoc }, oldTreeIndex);
+	// tangentPoints is currently relative
+	if (newTreeIndexSub < 0) {
+		System.out.println("oldTreeIndex: " + oldTreeIndex);
+		// there are no trees in the way to the tangent point of
+		// oldTreeIndex
+		float exitThea = Vect2d.pointToThea((Vect2d.vectSub(tarsTanSub,
+				trees[oldTreeIndex])));
+		System.out.println("entraceThea: " + entraceThea);
+		System.out.println("exitThea: " + exitThea);
+		float[] part = { 1, entraceThea, exitThea,
+				trees[oldTreeIndex][2] + pRadius, oldTreeIndex };
+
+		float deltaa = Vect2d.norm(tanPneg);
+		float[] delta = Vect2d.vectDivScalar(-deltaa, tanPneg);
+
+		part = JaMa.appendArFloatAr(part, new float[] { 0, delta[0],
+				delta[1], deltaa });
+		return part;
+	} else {
+		// leaving the initial circle it collides with another circle.
+		// 2 paths, inner line tan circs. outer line tan circs.
+		// float[] innerLineTan
+		// tang2circ(trees[oldTreeIndex], trees[oldTreeIndex][2] + pRadius,
+		// trees[newTreeIndexAdd], trees[newTreeIndexAdd][2] + pRadius);
+		return loopTwo(tempLoc, oldTreeIndex, newTreeIndexSub, curTarLoc,
+				entraceThea, true);
+	}
+	// return new float[0];
+}
