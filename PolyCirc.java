@@ -429,6 +429,11 @@ public class PolyCirc extends JPanel implements Runnable, MouseListener,
 		// a straight line to the second circ would not intersect with the first
 		// circ.
 
+		/**
+		 * How to copy the current path since it has not been returned yet.
+		 */
+		paths.add(paths.get(pathIndex).clone());
+
 		int innerTreeIndex = segmentInterAnyTreeIgnore2(innerSeg, oldTreeIndex,
 				newTreeIndex);
 		if (innerTreeIndex < 0) {
@@ -476,11 +481,9 @@ public class PolyCirc extends JPanel implements Runnable, MouseListener,
 			return new float[0];
 		}
 		// float[][] outerSeg =
-
-		// getOuterAdjTrim(trees[oldTreeIndex], trees[oldTreeIndex][2]
-		// + pRadius, trees[newTreeIndex], trees[newTreeIndex][2]
-		// + pRadius, add);
-
+		// getOuterAdjTrim(trees[oldTreeIndex], trees[oldTreeIndex][2] +
+		// pRadius,
+		// trees[newTreeIndex], trees[newTreeIndex][2] + pRadius, add);
 		// float[] inner = {
 	}
 
