@@ -160,3 +160,31 @@ float[] loop1noInterOld1(float[] tempLoc, int oldTreeIndex,
 	}
 	// return new float[0];
 }
+
+float[] getTangentPointsOld1(float[] play, float pRad, float[] tree,
+		float tRad) {
+	// Plug in play circle and tree circle, return the two lines from
+	// playLoc to the points tangent tree.
+	// I BELIEIVE ALL POINTS ARE RELATIVE PLAYER
+	// [0 + 1] is add tangent point vect relative to play
+	// [2 + 3] is sub tangent point vect relative to play
+	// [4] is -1 because it is supposed to set tree index outside this
+	// method.
+	float[] delta = Vect2d.vectSub(tree, play);
+	float hyp = Vect2d.norm(delta);
+	float opp = pRad + tRad;
+	float adj = (float) Math.sqrt(hyp * hyp - opp * opp);
+	float treeThea = Vect2d.pointToThea(delta);
+	float shapeThea = Vect2d.pointToThea(new float[] { adj, opp });
+	float addThea = Vect2d.theaAdd(treeThea, shapeThea);
+	float subThea = Vect2d.theaSub(treeThea, shapeThea);
+	float[] addPoint = Vect2d.theaToPoint(addThea, adj);
+
+	float[] subPoint = Vect2d.theaToPoint(subThea, adj);
+	// make sub thea and plus thea relative to tree.
+	// plus point minus tree
+	drawCircle(Color.ORANGE, Vect2d.vectAdd(play, addPoint), 4);
+	drawCircle(Color.MAGENTA, Vect2d.vectAdd(play, subPoint), 4);
+	return new float[] { addPoint[0], addPoint[1], subPoint[0],
+			subPoint[1], -1 };
+}
