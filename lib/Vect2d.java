@@ -199,14 +199,4 @@ public class Vect2d {
 		// System.out.println("tempThea: " + tempThea);
 		return tempThea;
 	}
-
-	public static float theaDifference(float thea1, float thea2) {
-
-		if (thea1 > Math.PI && thea2 > Math.PI) {
-			// Only works if one is positive and the other is negative
-			return (float) (Math.PI * 2 - (Math.abs(thea1) + Math.abs(thea2)));
-		}
-		return 12;
-	}
-
 }
