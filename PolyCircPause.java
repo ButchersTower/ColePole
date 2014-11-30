@@ -17,10 +17,10 @@ import javax.swing.JPanel;
 import ColePole.lib.JaMa;
 import ColePole.lib.Vect2d;
 
-public class PolyCircSmall extends JPanel implements Runnable, MouseListener,
+public class PolyCircPause extends JPanel implements Runnable, MouseListener,
 		KeyListener {
 
-	private int width = 540;
+	private int width = 400;
 	private int height = 450;
 
 	private Thread thread;
@@ -37,26 +37,37 @@ public class PolyCircSmall extends JPanel implements Runnable, MouseListener,
 	private long nextTick = mpt;
 	private boolean running = false;
 
-	// Vars for gLoop Above
-
-	private boolean mC = false;
-	private int[] clickInfo = new int[3];
-
+	// Player
 	private float[] pLoc = { 120, 160 };
 	private float pRadius = 20;
 	private float playSpeed = 12;
-
-	// 0 = x, 1 = y, 2 = radius
-	private float[][] trees = { { 200, 100, 40 }, { 280, 210, 30 },
-			{ 220, 310, 30 } };
-
-	// float[][] trees = { { 205, 150, 40 }, { 180, 270, 30 } };
-
+	private float playSpeedLeft = 0;
+	private boolean moving = false;
+	private float[] path = new float[0];
+	private ArrayList<float[]> paths = new ArrayList<float[]>();
 	private int[] tarLoc = new int[2];
 
-	private float[] path = new float[0];
+	// Clicking
+	private boolean mC = false;
+	private int[] clickInfo = new int[3];
 
-	public PolyCircSmall() {
+	// Trees
+	// 0 = x, 1 = y, 2 = radius
+	private float[][] trees = { { 190, 120, 4 }, { 210, 210, 30 },
+			{ 150, 310, 30 } };
+
+	// drawing
+	boolean drawBackground = false;
+	boolean makePath = false;
+
+	// Miscellaneous
+
+	private boolean wait = true;
+
+	private ArrayList<float[]> drawSteps = new ArrayList<float[]>();
+	private ArrayList<float[]> allSteps = new ArrayList<float[]>();
+
+	public PolyCircPause() {
 		super();
 
 		setPreferredSize(new Dimension(width, height));
@@ -90,15 +101,16 @@ public class PolyCircSmall extends JPanel implements Runnable, MouseListener,
 	 */
 
 	private void gStart() {
+		System.out.println("SPACE to unpause.");
 		running = true;
 		gLoop();
 	}
 
-	private boolean moving = false;
-
 	private void gLoop() {
 		while (running) {
 			ticks++;
+
+			nextTick = timer() + mpt;
 
 			// Runs once a second and keeps track of ticks;
 			// 1000 ms since last output
@@ -110,7 +122,6 @@ public class PolyCircSmall extends JPanel implements Runnable, MouseListener,
 						System.out.println("nextTick: " + nextTick);
 					}
 				}
-
 				ticks = 0;
 				lastSec = (System.currentTimeMillis() - startTime);
 			}
@@ -121,6 +132,9 @@ public class PolyCircSmall extends JPanel implements Runnable, MouseListener,
 			drawScene();
 
 			if (makePath) {
+				drawCircle(Color.ORANGE, tarLoc, 4);
+				drwGm();
+				pause();
 				moving = false;
 				makePath(pLoc, new float[] { (float) tarLoc[0],
 						(float) tarLoc[1] }, 0);
@@ -144,20 +158,6 @@ public class PolyCircSmall extends JPanel implements Runnable, MouseListener,
 					Thread.sleep(sleepTime);
 				} catch (InterruptedException e) {
 				}
-
-				nextTick += mpt;
-			}
-
-			// if next tick is less than the current time then don't sleep and
-			// add time so it runs a tick after adding.
-			// If the current time is after when the next tic should be.
-			if (nextTick < timer()) {
-				nextTick += mpt;
-			}
-
-			// if the game is more than 2 seconds behind it updates the ticks.
-			if (nextTick + 2000 < timer()) {
-				nextTick = timer() + mpt;
 			}
 		}
 	}
@@ -174,13 +174,22 @@ public class PolyCircSmall extends JPanel implements Runnable, MouseListener,
 		}
 	}
 
-	private ArrayList<float[]> paths = new ArrayList<float[]>();
-
 	private void makePath(float[] tempLoc, float[] finTarLoc, int pathIndex) {
 		paths.clear();
-		int oldTreeIndex = segmentInterAnyTree(new float[][] { tempLoc,
-				finTarLoc });
+		allSteps.clear();
+		drawSteps.clear();
+		drawLine(Color.GREEN, tempLoc, finTarLoc);
+		float[][] seg = { tempLoc, finTarLoc };
+		allSteps.add(tempLoc.clone());
+		allSteps.add(finTarLoc.clone());
+		int oldTreeIndex = segmentInterAnyTree(seg);
+		drwGm();
 		if (oldTreeIndex < 0) {
+			drawSteps.clear();
+			drawSteps.add(tempLoc.clone());
+			drawSteps.add(finTarLoc.clone());
+			System.out
+					.println("Linear Collision Detection, no collisions.\nGo straight to target.");
 			moving = true;
 			float deltaa = Vect2d.norm(Vect2d.vectSub(finTarLoc, tempLoc));
 			float[] delta = Vect2d.vectDivScalar(deltaa,
@@ -188,31 +197,71 @@ public class PolyCircSmall extends JPanel implements Runnable, MouseListener,
 			path = new float[] { 0, delta[0], delta[1], deltaa };
 			return;
 		} else {
+			System.out.println("Linear Collision DetectionM, closest tree is: "
+					+ oldTreeIndex);
+			pause();
 			paths.add(new float[0]);
-			splitLoopOne(tempLoc, oldTreeIndex, finTarLoc, pathIndex);
+			splitPathTo(tempLoc, oldTreeIndex, finTarLoc, pathIndex);
 			sortPaths();
 			moving = true;
 			return;
 		}
 	}
 
-	private void splitLoopOne(float[] tempLoc, int oldTreeIndex,
+	private void splitPathTo(float[] tempLoc, int oldTreeIndex,
 			float[] finTarLoc, int pathIndex) {
+		drawSteps.clear();
+		System.out
+				.println("Splitting paths at tangent point of the collided circle.");
 		float[][] tangentPoints = getTangentPoints(tempLoc, pRadius,
 				trees[oldTreeIndex], trees[oldTreeIndex][2]);
-		loopOne(tempLoc, oldTreeIndex, finTarLoc, tangentPoints[0], pathIndex,
+
+		drawBackground = true;
+		drawScene();
+		drawSteps();
+
+		drawLine(Color.GREEN, tempLoc,
+				Vect2d.vectAdd(tempLoc, tangentPoints[0]));
+
+		drawSteps.add(tempLoc.clone());
+		drawSteps.add(Vect2d.vectAdd(tempLoc, tangentPoints[0].clone()));
+		allSteps.add(tempLoc.clone());
+		allSteps.add(Vect2d.vectAdd(tempLoc, tangentPoints[0].clone()));
+
+		pathTo(tempLoc, oldTreeIndex, finTarLoc, tangentPoints[0], pathIndex,
 				true);
+
+		drawSteps.clear();
+
+		drawBackground = true;
+		drawScene();
+		drawSteps();
+		drawLine(Color.GREEN, tempLoc,
+				Vect2d.vectAdd(tempLoc, tangentPoints[1]));
+		drwGm();
+
+		drawSteps.add(tempLoc.clone());
+		drawSteps.add(Vect2d.vectAdd(tempLoc, tangentPoints[1].clone()));
+		allSteps.add(tempLoc.clone());
+		allSteps.add(Vect2d.vectAdd(tempLoc, tangentPoints[1].clone()));
+		drwGm();
+
 		pathIndex = paths.size();
 		paths.add(new float[0]);
-		loopOne(tempLoc, oldTreeIndex, finTarLoc, tangentPoints[1], pathIndex,
+
+		pathTo(tempLoc, oldTreeIndex, finTarLoc, tangentPoints[1], pathIndex,
 				false);
 	}
 
-	private void loopOne(float[] tempLoc, int oldTreeIndex, float[] finTarLoc,
+	private void pathTo(float[] tempLoc, int oldTreeIndex, float[] finTarLoc,
 			float[] tangentPoint, int pathIndex, boolean add) {
+		System.out.println("*loopOne*");
 		int newTreeIndex = segmentInterAnyTreeIgnore(new float[][] { tempLoc,
 				Vect2d.vectAdd(tempLoc, tangentPoint) }, oldTreeIndex);
+		drwGm();
 		if (newTreeIndex < 0) {
+			System.out.println("No collision to tangent point.");
+			pause();
 			float deltaa = Vect2d.norm(tangentPoint);
 			float[] delta = Vect2d.vectDivScalar(deltaa, tangentPoint);
 			float thea = Vect2d
@@ -225,27 +274,40 @@ public class PolyCircSmall extends JPanel implements Runnable, MouseListener,
 							delta[0], delta[1], deltaa }));
 			pathBack(oldTreeIndex, finTarLoc, thea, pathIndex, add);
 		} else {
-			splitLoopOne(tempLoc, newTreeIndex, finTarLoc, pathIndex);
+			System.out.println("Linear Collision Detection1, closest tree is: "
+					+ oldTreeIndex);
+			pause();
+			splitPathTo(tempLoc, newTreeIndex, finTarLoc, pathIndex);
 		}
 	}
 
 	private void pathBack(int oldTreeIndex, float[] finTarLoc,
 			float entranceThea, int pathIndex, boolean add) {
+		System.out.println("*pathBack*");
 		float[][] tangentPoints = getTangentPoints(finTarLoc, pRadius,
 				trees[oldTreeIndex], trees[oldTreeIndex][2]);
-
 		int newTreeIndex;
 		float[] tanPoint;
+		float[][] seg;
 		if (add) {
 			tanPoint = Vect2d.vectAdd(finTarLoc, tangentPoints[1]);
-			float[][] seg = new float[][] { tanPoint, finTarLoc };
+			seg = new float[][] { tanPoint, finTarLoc };
+			drawLine(Color.GREEN, seg[0], seg[1]);
+			drwGm();
 			newTreeIndex = segmentInterAnyTreeIgnore(seg, oldTreeIndex);
 		} else {
 			tanPoint = Vect2d.vectAdd(finTarLoc, tangentPoints[0]);
-			float[][] seg = new float[][] { tanPoint, finTarLoc };
+			seg = new float[][] { tanPoint, finTarLoc };
+			drawLine(Color.GREEN, seg[0], seg[1]);
+			drwGm();
 			newTreeIndex = segmentInterAnyTreeIgnore(seg, oldTreeIndex);
 		}
+		allSteps.add(seg[0]);
+		allSteps.add(seg[1]);
+
 		if (newTreeIndex < 0) {
+			System.out.println("Linear Collision Detection, no collisions.");
+			pause();
 			float[] pointRelTree = Vect2d
 					.vectSub(tanPoint, trees[oldTreeIndex]);
 			float thea = Vect2d.pointToThea(pointRelTree);
@@ -266,6 +328,12 @@ public class PolyCircSmall extends JPanel implements Runnable, MouseListener,
 			paths.set(pathIndex,
 					JaMa.appendArFloatAr(paths.get(pathIndex), path));
 		} else {
+			System.out.println("Linear Collision DetectionB, closest tree is: "
+					+ newTreeIndex);
+			pause();
+			drawBackground = true;
+			drawScene();
+			drawSteps();
 			paths.set(pathIndex,
 					JaMa.appendArFloatAr(paths.get(pathIndex), path));
 			circCircTans(oldTreeIndex, newTreeIndex, finTarLoc, entranceThea,
@@ -275,9 +343,19 @@ public class PolyCircSmall extends JPanel implements Runnable, MouseListener,
 
 	private void circCircTans(int oldTreeIndex, int newTreeIndex,
 			float[] finTarLoc, float oldEntranceThea, int pathIndex, boolean add) {
+		System.out.println("*circCircTans*");
 		float[][] innerSeg = tan2circ(trees[oldTreeIndex],
 				trees[oldTreeIndex][2] + pRadius, trees[newTreeIndex],
 				trees[newTreeIndex][2] + pRadius, add);
+
+		drawLine(Color.GREEN, innerSeg[0], innerSeg[1]);
+
+		drwGm();
+
+		drawSteps.add(innerSeg[0].clone());
+		drawSteps.add(innerSeg[1].clone());
+		allSteps.add(innerSeg[0].clone());
+		allSteps.add(innerSeg[1].clone());
 
 		int newPathIndex = paths.size();
 		paths.add(paths.get(pathIndex).clone());
@@ -285,6 +363,9 @@ public class PolyCircSmall extends JPanel implements Runnable, MouseListener,
 		int innerTreeIndex = segmentInterAnyTreeIgnore2(innerSeg, oldTreeIndex,
 				newTreeIndex);
 		if (innerTreeIndex < 0) {
+			System.out
+					.println("Inner Segment Detection, no collision to innerTreeIndex");
+			pause();
 			float[] exitRelOld = Vect2d.vectSub(innerSeg[0],
 					trees[oldTreeIndex]);
 			float exitThea = Vect2d.pointToThea(exitRelOld);
@@ -312,18 +393,53 @@ public class PolyCircSmall extends JPanel implements Runnable, MouseListener,
 						add);
 			}
 		} else {
+			System.out.println("Inner Segment Detection, closest tree is: "
+					+ innerTreeIndex);
+			pause();
+			int pathSteps = getPathSteps(paths.get(pathIndex));
+			while (drawSteps.size() > pathSteps * 2) {
+				drawSteps.remove(drawSteps.size() - 1);
+				drawSteps.remove(drawSteps.size() - 1);
+			}
+			drawBackground = true;
+			drawScene();
+			drawSteps();
 			circCircTans(oldTreeIndex, innerTreeIndex, finTarLoc,
-					oldEntranceThea, newPathIndex, add);
+					oldEntranceThea, pathIndex, add);
+			add = !add;
 		}
+
+		// When it the path is coming straight from the first path to circ.
+		// It needs add to be inverted.
 
 		float[][] outerSeg = getOuterAdjPre(oldTreeIndex,
 				trees[oldTreeIndex][2] + pRadius, newTreeIndex,
 				trees[newTreeIndex][2] + pRadius, oldEntranceThea, pathIndex,
 				add);
 
+		int pathSteps = getPathSteps(paths.get(newPathIndex));
+		while (drawSteps.size() > pathSteps * 2) {
+			drawSteps.remove(drawSteps.size() - 1);
+			drawSteps.remove(drawSteps.size() - 1);
+		}
+		drawBackground = true;
+		drawScene();
+		drawSteps();
+
+		drawLine(Color.GREEN, outerSeg[0], outerSeg[1]);
+		drawSteps.add(outerSeg[0]);
+		drawSteps.add(outerSeg[1]);
+		allSteps.add(outerSeg[0]);
+		allSteps.add(outerSeg[1]);
+
 		int outerTreeIndex = segmentInterAnyTreeIgnore2(outerSeg, oldTreeIndex,
 				newTreeIndex);
+		drwGm();
 		if (outerTreeIndex < 0) {
+			System.out
+					.println("Outer Segment Detection, no collision to outerTreeIndex");
+			pause();
+
 			float[] exitRelOld = Vect2d.vectSub(outerSeg[0],
 					trees[oldTreeIndex]);
 
@@ -346,6 +462,17 @@ public class PolyCircSmall extends JPanel implements Runnable, MouseListener,
 			pathBack(newTreeIndex, finTarLoc, newEntranceThea, newPathIndex,
 					add);
 		} else {
+			System.out.println("Outer Segment Detection, closest tree is: "
+					+ outerTreeIndex);
+			int pathSteps1 = getPathSteps(paths.get(newPathIndex));
+			while (drawSteps.size() > pathSteps1 * 2) {
+				drawSteps.remove(drawSteps.size() - 1);
+				drawSteps.remove(drawSteps.size() - 1);
+			}
+			drawBackground = true;
+			drawScene();
+			drawSteps();
+			pause();
 			circCircTans(oldTreeIndex, outerTreeIndex, finTarLoc,
 					oldEntranceThea, newPathIndex, add);
 		}
@@ -356,7 +483,7 @@ public class PolyCircSmall extends JPanel implements Runnable, MouseListener,
 			float tRad) {
 		// Plug in play circle and tree circle, return the two lines from
 		// playLoc to the points tangent tree.
-		// I BELIEIVE ALL POINTS ARE RELATIVE PLAYER
+		// All points are relative play.
 		// [0 + 1] is add tangent point vect relative to play
 		// [2 + 3] is sub tangent point vect relative to play
 		// [4] is -1 because it is supposed to set tree index outside this
@@ -371,16 +498,38 @@ public class PolyCircSmall extends JPanel implements Runnable, MouseListener,
 		float subThea = Vect2d.theaSub(treeThea, shapeThea);
 		float[] addPoint = Vect2d.theaToPoint(addThea, adj);
 		float[] subPoint = Vect2d.theaToPoint(subThea, adj);
-		// make sub thea and plus thea relative to tree.
-		// plus point minus tree
+
 		return new float[][] { addPoint, subPoint };
+	}
+
+	void pause() {
+		wait = true;
+		while (wait) {
+			try {
+				thread.sleep(500);
+			} catch (Exception ex) {
+
+			}
+		}
+	}
+
+	int getPathSteps(float[] path) {
+		// Number of steps in a path (Ignoring arc segments)
+		int steps = 0;
+		for (int check = 0; check < path.length;) {
+			if (path[check] == 0) {
+				steps += 1;
+				check += 4;
+			} else if (path[check] == 1) {
+				check += 5;
+			}
+		}
+		return steps;
 	}
 
 	/**
 	 * Path follow
 	 */
-
-	private float playSpeedLeft = 0;
 
 	private void followPath() {
 		while (path.length > 0 && playSpeedLeft > 0) {
@@ -411,7 +560,7 @@ public class PolyCircSmall extends JPanel implements Runnable, MouseListener,
 					* path[3]);
 			if (edgeLength > playSpeedLeft) {
 				// figure out if plus thea is closer or minus thea, then move
-				// accordingly inorder to fuffil moveSpeedLeft.
+				// accordingly in order to fulfill moveSpeedLeft.
 				float possableThea = playSpeedLeft / path[3];
 				float newThea;
 				if (Vect2d.theaSub(path[1], path[2]) < 0) {
@@ -423,7 +572,6 @@ public class PolyCircSmall extends JPanel implements Runnable, MouseListener,
 				float[] newLoc = Vect2d.theaToPoint(newThea, path[3]);
 				pLoc[0] = trees[(int) path[4]][0] + newLoc[0];
 				pLoc[1] = trees[(int) path[4]][1] + newLoc[1];
-				// pathing = false;
 				playSpeedLeft = 0;
 			} else {
 				float[] newLoc = Vect2d.theaToPoint(path[2], path[3]);
@@ -497,23 +645,47 @@ public class PolyCircSmall extends JPanel implements Runnable, MouseListener,
 							trees[t][2], vect);
 					scalars.add(new float[] { theseScalars[0], theseScalars[1],
 							t });
+					fillCircle(Color.RED, Vect2d.vectAdd(seg[0],
+							Vect2d.vectMultScalar(theseScalars[0], vect)), 4);
+					fillCircle(Color.RED, Vect2d.vectAdd(seg[0],
+							Vect2d.vectMultScalar(theseScalars[1], vect)), 4);
 				}
 			}
 		}
 		// Search thought scalars and find the lowest one.
 		int lowestTree = -1;
+		int lowS = -1;
+		boolean zer = true;
 		if (scalars.size() != 0) {
 			lowestTree = (int) scalars.get(0)[2];
 			float lowestScalar = scalars.get(0)[0];
-			for (int s = 1; s < scalars.size(); s++) {
+			lowS = 0;
+			for (int s = 0; s < scalars.size(); s++) {
 				if (scalars.get(s)[0] < lowestScalar) {
 					lowestScalar = scalars.get(s)[0];
 					lowestTree = (int) scalars.get(s)[2];
+					lowS = s;
+					zer = true;
 				}
 				if (scalars.get(s)[1] < lowestScalar) {
 					lowestScalar = scalars.get(s)[1];
 					lowestTree = (int) scalars.get(s)[2];
+					lowS = s;
+					zer = false;
 				}
+			}
+		}
+		if (lowS != -1) {
+			if (zer) {
+				fillCircle(
+						Color.GREEN,
+						Vect2d.vectAdd(seg[0], Vect2d.vectMultScalar(
+								scalars.get(lowS)[0], vect)), 4);
+			} else {
+				fillCircle(
+						Color.GREEN,
+						Vect2d.vectAdd(seg[0], Vect2d.vectMultScalar(
+								scalars.get(lowS)[1], vect)), 4);
 			}
 		}
 		return lowestTree;
@@ -545,29 +717,57 @@ public class PolyCircSmall extends JPanel implements Runnable, MouseListener,
 								pRadius,
 								new float[] { trees[t][0], trees[t][1] },
 								trees[t][2], vect);
-						// Vect2d.sayVect("theseScalars", theseScalars);
 						scalars.add(new float[] { theseScalars[0],
 								theseScalars[1], t });
+						fillCircle(Color.RED, Vect2d.vectAdd(seg[0],
+								Vect2d.vectMultScalar(theseScalars[0], vect)),
+								4);
+						fillCircle(Color.RED, Vect2d.vectAdd(seg[0],
+								Vect2d.vectMultScalar(theseScalars[1], vect)),
+								4);
 					}
 				}
 			}
 		}
 		// Search thought scalars and find the lowest one.
 		int lowestTree = -1;
+		int lowS = -1;
+		boolean zer = true;
 		if (scalars.size() != 0) {
 			lowestTree = (int) scalars.get(0)[2];
 			float lowestScalar = scalars.get(0)[0];
-			for (int s = 1; s < scalars.size(); s++) {
+			lowS = 0;
+			for (int s = 0; s < scalars.size(); s++) {
 				if (scalars.get(s)[0] < lowestScalar) {
 					lowestScalar = scalars.get(s)[0];
 					lowestTree = (int) scalars.get(s)[2];
+					lowestTree = (int) scalars.get(s)[2];
+					lowS = s;
+					zer = true;
 				}
 				if (scalars.get(s)[1] < lowestScalar) {
 					lowestScalar = scalars.get(s)[1];
 					lowestTree = (int) scalars.get(s)[2];
+					lowestTree = (int) scalars.get(s)[2];
+					lowS = s;
+					zer = false;
 				}
 			}
 		}
+		if (lowS != -1) {
+			if (zer) {
+				fillCircle(
+						Color.GREEN,
+						Vect2d.vectAdd(seg[0], Vect2d.vectMultScalar(
+								scalars.get(lowS)[0], vect)), 4);
+			} else {
+				fillCircle(
+						Color.GREEN,
+						Vect2d.vectAdd(seg[0], Vect2d.vectMultScalar(
+								scalars.get(lowS)[1], vect)), 4);
+			}
+		}
+		drwGm();
 		return lowestTree;
 	}
 
@@ -598,36 +798,65 @@ public class PolyCircSmall extends JPanel implements Runnable, MouseListener,
 								pRadius,
 								new float[] { trees[t][0], trees[t][1] },
 								trees[t][2], vect);
-						// Vect2d.sayVect("theseScalars", theseScalars);
 						scalars.add(new float[] { theseScalars[0],
 								theseScalars[1], t });
+						fillCircle(Color.RED, Vect2d.vectAdd(seg[0],
+								Vect2d.vectMultScalar(theseScalars[0], vect)),
+								4);
+						fillCircle(Color.RED, Vect2d.vectAdd(seg[0],
+								Vect2d.vectMultScalar(theseScalars[1], vect)),
+								4);
 					}
 				}
 			}
 		}
 		// Search thought scalars and find the lowest one.
 		int lowestTree = -1;
+		int lowS = -1;
+		boolean zer = true;
 		if (scalars.size() != 0) {
 			lowestTree = (int) scalars.get(0)[2];
 			float lowestScalar = scalars.get(0)[0];
-			for (int s = 1; s < scalars.size(); s++) {
+			lowS = 0;
+			for (int s = 0; s < scalars.size(); s++) {
 				if (scalars.get(s)[0] < lowestScalar) {
 					lowestScalar = scalars.get(s)[0];
 					lowestTree = (int) scalars.get(s)[2];
+					lowestTree = (int) scalars.get(s)[2];
+					lowS = s;
+					zer = true;
 				}
 				if (scalars.get(s)[1] < lowestScalar) {
 					lowestScalar = scalars.get(s)[1];
 					lowestTree = (int) scalars.get(s)[2];
+					lowestTree = (int) scalars.get(s)[2];
+					lowS = s;
+					zer = false;
 				}
 			}
 		}
+		if (lowS != -1) {
+			if (zer) {
+				fillCircle(
+						Color.GREEN,
+						Vect2d.vectAdd(seg[0], Vect2d.vectMultScalar(
+								scalars.get(lowS)[0], vect)), 4);
+			} else {
+				fillCircle(
+						Color.GREEN,
+						Vect2d.vectAdd(seg[0], Vect2d.vectMultScalar(
+								scalars.get(lowS)[1], vect)), 4);
+			}
+		}
+		drwGm();
 		return lowestTree;
 	}
 
 	private float distPointToVect(float[] point, float[] vect) {
-		// project, is projection scalar is farther than the line then take
-		// hypotnuse of closest and edge and point. if the scalar is on the line
-		// then reject and that is dist.
+		// Project point onto vect.
+		// If projection scalar is greater than 1 or less than 0
+		// then take hypotenuse of closest and edge and point.
+		// if the scalar is on the line then reject and that is dist.
 
 		float dist;
 		float projScalar = Vect2d.scalarOfProject(point, vect);
@@ -686,14 +915,9 @@ public class PolyCircSmall extends JPanel implements Runnable, MouseListener,
 		return answ;
 	}
 
-	// I want blue green when going down right.
-	// I only want one of the tangent lines.
 	private float[][] tan2circ(float[] c1Loc, float c1r, float[] c2Loc,
 			float c2r, boolean add) {
 		// make everything relative c1Loc
-		// Draws the two circle
-		// find mid point
-		// circle 1 to circle 2 vect
 		float[] c1toc2 = Vect2d.vectSub(c2Loc, c1Loc);
 		// ratio of c1r to c2r
 		float c1ratc2 = c1r / (c1r + c2r);
@@ -701,8 +925,6 @@ public class PolyCircSmall extends JPanel implements Runnable, MouseListener,
 		float[] midPoint = Vect2d.vectMultScalar(c1ratc2, c1toc2);
 		// get tangent of the midpoint on both circles.
 
-		// draws midpoint.
-		// get four tangent points.
 		float[][] al1 = getTangentPoints(midPoint, 0, new float[] { 0, 0 }, c1r);
 		float[][] al2 = getTangentPoints(midPoint, 0, c1toc2, c2r);
 		if (!add) {
@@ -722,12 +944,9 @@ public class PolyCircSmall extends JPanel implements Runnable, MouseListener,
 		}
 	}
 
-	// retuns a seg
 	private float[][] outerEdgeOne(float[] tanPointRelTwo, float[] circOne,
 			float[] circTwo, float circTwoR, boolean add) {
-		// solo part is the tangent part.
 		float[] absTanPoint = Vect2d.vectAdd(tanPointRelTwo, circTwo);
-		// float[] partSub = Vect2d.vectSub(point, soloPart);
 		float[] tanPointRelOne = Vect2d.vectSub(absTanPoint, circOne);
 		// scale part1 to pointR
 		float[] scaledTanPointRelOne = Vect2d.scaleVectTo(tanPointRelOne,
@@ -751,22 +970,37 @@ public class PolyCircSmall extends JPanel implements Runnable, MouseListener,
 	private float[][] getOuterAdjPre(int oldTreeIndex, float circOneR,
 			int newTreeIndex, float circTwoR, float oldEntranceThea,
 			int pathIndex, boolean add) {
+		System.out.println("*getOuterAdjPre*");
 		float[][] seg;
 		if (circTwoR > circOneR) {
+			// System.out.println("greater than.");
 			seg = getOuterAdjTrim(newTreeIndex, circTwoR, oldTreeIndex,
 					circOneR, oldEntranceThea, pathIndex, !add);
 			float[] temp = seg[0];
 			seg[0] = seg[1];
 			seg[1] = temp;
+		} else if (circTwoR == circOneR) {
+			// System.out.println("equal to");
+			float thea = Vect2d.pointToThea(Vect2d.vectSub(trees[oldTreeIndex],
+					trees[newTreeIndex]));
+			float addThea = Vect2d.theaAdd(thea, (float) Math.PI / 2);
+			float subThea = Vect2d.theaSub(thea, (float) Math.PI / 2);
+			float[] point;
+			if (add) {
+				point = Vect2d.theaToPoint(addThea, circTwoR);
+			} else {
+				point = Vect2d.theaToPoint(subThea, circTwoR);
+			}
+			seg = new float[][] { Vect2d.vectAdd(trees[oldTreeIndex], point),
+					Vect2d.vectAdd(trees[newTreeIndex], point) };
 		} else {
+			// System.out.println("less than");
 			seg = getOuterAdjTrim(oldTreeIndex, circOneR, newTreeIndex,
 					circTwoR, oldEntranceThea, pathIndex, add);
 		}
 		return seg;
 	}
 
-	// old tree loc + radius
-	// new tree loc + radius
 	private float[][] getOuterAdjTrim(int oldTreeIndex, float circOneR,
 			int newTreeIndex, float circTwoR, float oldEntranceThea,
 			int pathIndex, boolean add) {
@@ -779,7 +1013,7 @@ public class PolyCircSmall extends JPanel implements Runnable, MouseListener,
 			tanPs = getTangentPoints(trees[newTreeIndex], 0,
 					trees[oldTreeIndex], circOneR - circTwoR);
 		}
-		// scale vect tree -> tanP to playRadus.
+		// scale vect (tree -> tanP) to playRadus.
 		// add it to tanP. add it to playLoc.
 		// Make a vect of thoes two points.
 		if (add) {
@@ -811,9 +1045,19 @@ public class PolyCircSmall extends JPanel implements Runnable, MouseListener,
 		}
 		// draws player
 		drawCircle(Color.BLUE, pLoc, pRadius);
+		// draw target
+		if (makePath || moving) {
+			drawCircle(Color.ORANGE, tarLoc, 4);
+		}
 	}
 
 	private void drawCircle(Color color, float[] circLoc, float radius) {
+		g.setColor(color);
+		g.drawOval((int) (circLoc[0] - radius), (int) (circLoc[1] - radius),
+				(int) (radius * 2), (int) (radius * 2));
+	}
+
+	private void drawCircle(Color color, int[] circLoc, float radius) {
 		g.setColor(color);
 		g.drawOval((int) (circLoc[0] - radius), (int) (circLoc[1] - radius),
 				(int) (radius * 2), (int) (radius * 2));
@@ -829,6 +1073,22 @@ public class PolyCircSmall extends JPanel implements Runnable, MouseListener,
 		g.setColor(color);
 		g.drawLine((int) (p1[0] + .5f), (int) (p1[1] + .5f),
 				(int) (p2[0] + .5f), (int) (p2[1] + .5f));
+	}
+
+	private void drawSteps() {
+		drawAllSteps();
+		for (int i = 0; i < drawSteps.size(); i += 2) {
+			drawLine(Color.RED, drawSteps.get(i), drawSteps.get(i + 1));
+			drwGm();
+		}
+	}
+
+	private void drawAllSteps() {
+		for (int i = 0; i < allSteps.size(); i += 2) {
+			drawLine(new Color(50, 50, 50), allSteps.get(i),
+					allSteps.get(i + 1));
+			drwGm();
+		}
 	}
 
 	/**
@@ -847,27 +1107,21 @@ public class PolyCircSmall extends JPanel implements Runnable, MouseListener,
 	}
 
 	@Override
-	public void keyTyped(KeyEvent e) {
-		// TODO Auto-generated method stub
-
-	}
-
-	private boolean drawBackground = false;
-
-	@Override
 	public void keyPressed(KeyEvent ke) {
 		if (ke.getKeyCode() == KeyEvent.VK_ENTER) {
 			drawBackground = true;
+		} else if (ke.getKeyCode() == KeyEvent.VK_SPACE) {
+			wait = false;
 		}
 	}
 
 	@Override
 	public void keyReleased(KeyEvent e) {
-		// TODO Auto-generated method stub
-
 	}
 
-	private boolean makePath = false;
+	@Override
+	public void keyTyped(KeyEvent e) {
+	}
 
 	@Override
 	public void mousePressed(MouseEvent me) {
@@ -879,24 +1133,19 @@ public class PolyCircSmall extends JPanel implements Runnable, MouseListener,
 
 	@Override
 	public void mouseReleased(MouseEvent e) {
-		// TODO Auto-generated method stub
-
 	}
 
 	@Override
 	public void mouseClicked(MouseEvent me) {
-
 	}
 
 	@Override
 	public void mouseEntered(MouseEvent e) {
-		// TODO Auto-generated method stub
 
 	}
 
 	@Override
 	public void mouseExited(MouseEvent e) {
-		// TODO Auto-generated method stub
 
 	}
 

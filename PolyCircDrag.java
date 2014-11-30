@@ -9,6 +9,7 @@ import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
+import java.awt.event.MouseMotionListener;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 
@@ -17,8 +18,8 @@ import javax.swing.JPanel;
 import ColePole.lib.JaMa;
 import ColePole.lib.Vect2d;
 
-public class PolyCircTrim extends JPanel implements Runnable, MouseListener,
-		KeyListener {
+public class PolyCircDrag extends JPanel implements Runnable, MouseListener,
+		KeyListener, MouseMotionListener {
 
 	private int width = 400;
 	private int height = 450;
@@ -38,7 +39,7 @@ public class PolyCircTrim extends JPanel implements Runnable, MouseListener,
 	private boolean running = false;
 
 	// Player
-	private float[] pLoc = { 120, 160 };
+	private float[] pLoc = { 80, 120 };
 	private float pRadius = 20;
 	private float playSpeed = 12;
 	private float playSpeedLeft = 0;
@@ -53,14 +54,18 @@ public class PolyCircTrim extends JPanel implements Runnable, MouseListener,
 
 	// Trees
 	// 0 = x, 1 = y, 2 = radius
-	private float[][] trees = { { 190, 120, 4 }, { 210, 210, 30 },
-			{ 150, 310, 30 } };
+	// private float[][] trees = { { 190, 120, 4 }, { 210, 210, 30 },
+	// { 150, 310, 30 } };
+	// private float[][] trees = { { 120, 150, 16 }, { 250, 190, 24 },
+	// { 220, 310, 28 } };
+	private float[][] trees = { { 120, 150, 16 }, { 240, 200, 24 },
+			{ 220, 310, 28 } };
 
 	// drawing
 	boolean drawBackground = false;
 	boolean makePath = false;
 
-	public PolyCircTrim() {
+	public PolyCircDrag() {
 		super();
 
 		setPreferredSize(new Dimension(width, height));
@@ -83,6 +88,7 @@ public class PolyCircTrim extends JPanel implements Runnable, MouseListener,
 
 		addMouseListener(this);
 		addKeyListener(this);
+		addMouseMotionListener(this);
 
 		startTime = System.currentTimeMillis();
 		gStart();
@@ -128,6 +134,7 @@ public class PolyCircTrim extends JPanel implements Runnable, MouseListener,
 				moving = false;
 				makePath(pLoc, new float[] { (float) tarLoc[0],
 						(float) tarLoc[1] }, 0);
+				moving = true;
 				makePath = false;
 			}
 
@@ -323,7 +330,6 @@ public class PolyCircTrim extends JPanel implements Runnable, MouseListener,
 		} else {
 			System.out.println("Inner Segment Detection, closest tree is: "
 					+ innerTreeIndex);
-			int pathSteps = getPathSteps(paths.get(pathIndex));
 			circCircTans(oldTreeIndex, innerTreeIndex, finTarLoc,
 					oldEntranceThea, pathIndex, add);
 			add = !add;
@@ -336,8 +342,6 @@ public class PolyCircTrim extends JPanel implements Runnable, MouseListener,
 				trees[oldTreeIndex][2] + pRadius, newTreeIndex,
 				trees[newTreeIndex][2] + pRadius, oldEntranceThea, pathIndex,
 				add);
-
-		int pathSteps = getPathSteps(paths.get(newPathIndex));
 
 		int outerTreeIndex = segmentInterAnyTreeIgnore2(outerSeg, oldTreeIndex,
 				newTreeIndex);
@@ -369,7 +373,6 @@ public class PolyCircTrim extends JPanel implements Runnable, MouseListener,
 		} else {
 			System.out.println("Outer Segment Detection, closest tree is: "
 					+ outerTreeIndex);
-			int pathSteps1 = getPathSteps(paths.get(newPathIndex));
 			circCircTans(oldTreeIndex, outerTreeIndex, finTarLoc,
 					oldEntranceThea, newPathIndex, add);
 		}
@@ -397,20 +400,6 @@ public class PolyCircTrim extends JPanel implements Runnable, MouseListener,
 		float[] subPoint = Vect2d.theaToPoint(subThea, adj);
 
 		return new float[][] { addPoint, subPoint };
-	}
-
-	int getPathSteps(float[] path) {
-		// Number of steps in a path (Ignoring arc segments)
-		int steps = 0;
-		for (int check = 0; check < path.length;) {
-			if (path[check] == 0) {
-				steps += 1;
-				check += 4;
-			} else if (path[check] == 1) {
-				check += 5;
-			}
-		}
-		return steps;
 	}
 
 	/**
@@ -908,6 +897,34 @@ public class PolyCircTrim extends JPanel implements Runnable, MouseListener,
 	 * And above here
 	 */
 
+	ArrayList<int[]> mPress;
+	int lastClick;
+
+	// void qPress() {
+	// for (int p = 0; p < mPress.size(); p++) {
+	// if (mPress.get(p)[2] == 1) {
+	// lastClick = 1;
+	// // 1 is left mouse button
+	// clearSelected();
+	// // Check to see if it click on one of its units.
+	// // Check to see if it click on the unit of another controller.
+	// for (int u = 0; u < units.size(); u++) {
+	// if (units.get(u).overlap(mPress.get(p)[0] + cameraLoc[0],
+	// mPress.get(p)[1] + cameraLoc[1])) {
+	// units.get(u).setSelected(true);
+	// } }
+	// } else if (mPress.get(p)[2] == 3) {
+	// lastClick = 3;
+	// // 3 is right mouse button
+	// System.out.println("3p");
+	// // set target and at the beginning of the next tick make paths
+	// // for all selected units.
+	// makePaths(mPress.get(p)[0] + (int) cameraLoc[0],
+	// mPress.get(p)[1] + (int) cameraLoc[1]);
+	// } }
+	// mPress.clear();
+	// }
+
 	public long timer() {
 		return System.currentTimeMillis() - startTime;
 
@@ -934,12 +951,22 @@ public class PolyCircTrim extends JPanel implements Runnable, MouseListener,
 	public void keyTyped(KeyEvent e) {
 	}
 
+	boolean mD = false;
+	float[] lastDragLoc = new float[0];
+
 	@Override
 	public void mousePressed(MouseEvent me) {
 		mC = true;
 		clickInfo[0] = me.getX();
 		clickInfo[1] = me.getY();
 		clickInfo[2] = me.getButton();
+		// System.out.println("(x, y): (" + x + ", " + y + ")");
+		// Vect2d.sayVect("cameraLoc", cameraLoc);
+		// if (!mD) {
+		// lastDragLoc[0] = me.getX();
+		// lastDragLoc[1] = me.getY();
+		// }
+		// mPress.add(new int[] { me.getX(), me.getY(), me.getButton() });
 	}
 
 	@Override
@@ -960,4 +987,23 @@ public class PolyCircTrim extends JPanel implements Runnable, MouseListener,
 
 	}
 
+	float[] mDrag = new float[3];
+
+	@Override
+	public void mouseDragged(MouseEvent me) {
+		mC = true;
+		clickInfo[0] = me.getX();
+		clickInfo[1] = me.getY();
+		clickInfo[2] = 3;
+		// mDrag[0] = me.getX();
+		// mDrag[1] = me.getY();
+		// mDrag[2] = me.getButton();
+		// mD = true;
+	}
+
+	@Override
+	public void mouseMoved(MouseEvent e) {
+		// TODO Auto-generated method stub
+
+	}
 }
