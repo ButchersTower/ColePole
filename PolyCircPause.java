@@ -334,8 +334,6 @@ public class PolyCircPause extends JPanel implements Runnable, MouseListener,
 			drawBackground = true;
 			drawScene();
 			drawSteps();
-			paths.set(pathIndex,
-					JaMa.appendArFloatAr(paths.get(pathIndex), path));
 			circCircTans(oldTreeIndex, newTreeIndex, finTarLoc, entranceThea,
 					pathIndex, add);
 		}

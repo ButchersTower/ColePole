@@ -272,8 +272,6 @@ public class PolyCircTrim extends JPanel implements Runnable, MouseListener,
 		} else {
 			System.out.println("Linear Collision DetectionB, closest tree is: "
 					+ newTreeIndex);
-			paths.set(pathIndex,
-					JaMa.appendArFloatAr(paths.get(pathIndex), path));
 			circCircTans(oldTreeIndex, newTreeIndex, finTarLoc, entranceThea,
 					pathIndex, add);
 		}
