@@ -5,6 +5,8 @@ Pathfinding Development.
 
 ColePole.java contains the main method and sets the panel.
 
+In order to use different panels change the contentPane in ColePole
+
 Panels
 
 OneCirc allows the unit to find the shortest path around one circle and walks there.
