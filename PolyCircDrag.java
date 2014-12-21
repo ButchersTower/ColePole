@@ -161,7 +161,6 @@ public class PolyCircDrag extends JPanel implements Runnable, MouseListener,
 
 	private void clickHande() {
 		if (mC) {
-			System.out.println("** click **");
 			if (clickInfo[2] == 3) {
 				tarLoc[0] = clickInfo[0];
 				tarLoc[1] = clickInfo[1];
@@ -176,8 +175,6 @@ public class PolyCircDrag extends JPanel implements Runnable, MouseListener,
 		float[][] seg = { tempLoc, finTarLoc };
 		int oldTreeIndex = segmentInterAnyTree(seg);
 		if (oldTreeIndex < 0) {
-			System.out
-					.println("Linear Collision Detection, no collisions.\nGo straight to target.");
 			moving = true;
 			float deltaa = Vect2d.norm(Vect2d.vectSub(finTarLoc, tempLoc));
 			float[] delta = Vect2d.vectDivScalar(deltaa,
@@ -185,8 +182,6 @@ public class PolyCircDrag extends JPanel implements Runnable, MouseListener,
 			path = new float[] { 0, delta[0], delta[1], deltaa };
 			return;
 		} else {
-			System.out.println("Linear Collision DetectionM, closest tree is: "
-					+ oldTreeIndex);
 			paths.add(new float[0]);
 			splitPathTo(tempLoc, oldTreeIndex, finTarLoc, pathIndex);
 			sortPaths();
@@ -197,49 +192,57 @@ public class PolyCircDrag extends JPanel implements Runnable, MouseListener,
 
 	private void splitPathTo(float[] tempLoc, int oldTreeIndex,
 			float[] finTarLoc, int pathIndex) {
-		System.out
-				.println("Splitting paths at tangent point of the collided circle.");
 		float[][] tangentPoints = getTangentPoints(tempLoc, pRadius,
 				trees[oldTreeIndex], trees[oldTreeIndex][2]);
 
+		// HERE
+		if (tangentPoints.length == 1) {
+			// hyp = opp, so just move onto angled part of the path.
+			// ent thea is current thea.
+			// float thea = Vect2d.pointToThea((Vect2d.vectSub(
+			// Vect2d.vectAdd(tempLoc, tangentPoints[0]),
+			// trees[oldTreeIndex])));
+			// pathBack(oldTreeIndex, finTarLoc, thea, pathIndex, true);
+			// pathBack(oldTreeIndex, finTarLoc, thea, pathIndex, false);
+		}
+
+		Vect2d.sayVect("tangentPoint", tangentPoints[0]);
 		pathTo(tempLoc, oldTreeIndex, finTarLoc, tangentPoints[0], pathIndex,
 				true);
 
 		pathIndex = paths.size();
 		paths.add(new float[0]);
 
+		Vect2d.sayVect("tangentPoint", tangentPoints[1]);
 		pathTo(tempLoc, oldTreeIndex, finTarLoc, tangentPoints[1], pathIndex,
 				false);
 	}
 
 	private void pathTo(float[] tempLoc, int oldTreeIndex, float[] finTarLoc,
 			float[] tangentPoint, int pathIndex, boolean add) {
-		System.out.println("*loopOne*");
 		int newTreeIndex = segmentInterAnyTreeIgnore(new float[][] { tempLoc,
 				Vect2d.vectAdd(tempLoc, tangentPoint) }, oldTreeIndex);
 		if (newTreeIndex < 0) {
-			System.out.println("No collision to tangent point.");
 			float deltaa = Vect2d.norm(tangentPoint);
+			// Vect2d.sayVect("tangentPoint", tangentPoint);
 			float[] delta = Vect2d.vectDivScalar(deltaa, tangentPoint);
 			float thea = Vect2d
 					.pointToThea((Vect2d.vectSub(
 							Vect2d.vectAdd(tempLoc, tangentPoint),
 							trees[oldTreeIndex])));
+			Vect2d.sayVect("delta", delta);
 			paths.set(
 					pathIndex,
 					JaMa.appendArFloatAr(paths.get(pathIndex), new float[] { 0,
 							delta[0], delta[1], deltaa }));
 			pathBack(oldTreeIndex, finTarLoc, thea, pathIndex, add);
 		} else {
-			System.out.println("Linear Collision Detection1, closest tree is: "
-					+ oldTreeIndex);
 			splitPathTo(tempLoc, newTreeIndex, finTarLoc, pathIndex);
 		}
 	}
 
 	private void pathBack(int oldTreeIndex, float[] finTarLoc,
 			float entranceThea, int pathIndex, boolean add) {
-		System.out.println("*pathBack*");
 		float[][] tangentPoints = getTangentPoints(finTarLoc, pRadius,
 				trees[oldTreeIndex], trees[oldTreeIndex][2]);
 		int newTreeIndex;
@@ -256,7 +259,6 @@ public class PolyCircDrag extends JPanel implements Runnable, MouseListener,
 		}
 
 		if (newTreeIndex < 0) {
-			System.out.println("Linear Collision Detection, no collisions.");
 			float[] pointRelTree = Vect2d
 					.vectSub(tanPoint, trees[oldTreeIndex]);
 			float thea = Vect2d.pointToThea(pointRelTree);
@@ -277,9 +279,6 @@ public class PolyCircDrag extends JPanel implements Runnable, MouseListener,
 			paths.set(pathIndex,
 					JaMa.appendArFloatAr(paths.get(pathIndex), path));
 		} else {
-			// BUGGG
-			System.out.println("Linear Collision DetectionB, closest tree is: "
-					+ newTreeIndex);
 			circCircTans(oldTreeIndex, newTreeIndex, finTarLoc, entranceThea,
 					pathIndex, add);
 		}
@@ -287,7 +286,6 @@ public class PolyCircDrag extends JPanel implements Runnable, MouseListener,
 
 	private void circCircTans(int oldTreeIndex, int newTreeIndex,
 			float[] finTarLoc, float oldEntranceThea, int pathIndex, boolean add) {
-		System.out.println("*circCircTans*");
 		float[][] innerSeg = tan2circ(trees[oldTreeIndex],
 				trees[oldTreeIndex][2] + pRadius, trees[newTreeIndex],
 				trees[newTreeIndex][2] + pRadius, add);
@@ -298,8 +296,6 @@ public class PolyCircDrag extends JPanel implements Runnable, MouseListener,
 		int innerTreeIndex = segmentInterAnyTreeIgnore2(innerSeg, oldTreeIndex,
 				newTreeIndex);
 		if (innerTreeIndex < 0) {
-			System.out
-					.println("Inner Segment Detection, no collision to innerTreeIndex");
 			float[] exitRelOld = Vect2d.vectSub(innerSeg[0],
 					trees[oldTreeIndex]);
 			float exitThea = Vect2d.pointToThea(exitRelOld);
@@ -327,8 +323,6 @@ public class PolyCircDrag extends JPanel implements Runnable, MouseListener,
 						add);
 			}
 		} else {
-			System.out.println("Inner Segment Detection, closest tree is: "
-					+ innerTreeIndex);
 			circCircTans(oldTreeIndex, innerTreeIndex, finTarLoc,
 					oldEntranceThea, pathIndex, add);
 			add = !add;
@@ -345,9 +339,6 @@ public class PolyCircDrag extends JPanel implements Runnable, MouseListener,
 		int outerTreeIndex = segmentInterAnyTreeIgnore2(outerSeg, oldTreeIndex,
 				newTreeIndex);
 		if (outerTreeIndex < 0) {
-			System.out
-					.println("Outer Segment Detection, no collision to outerTreeIndex");
-
 			float[] exitRelOld = Vect2d.vectSub(outerSeg[0],
 					trees[oldTreeIndex]);
 
@@ -370,8 +361,6 @@ public class PolyCircDrag extends JPanel implements Runnable, MouseListener,
 			pathBack(newTreeIndex, finTarLoc, newEntranceThea, newPathIndex,
 					add);
 		} else {
-			System.out.println("Outer Segment Detection, closest tree is: "
-					+ outerTreeIndex);
 			circCircTans(oldTreeIndex, outerTreeIndex, finTarLoc,
 					oldEntranceThea, newPathIndex, add);
 		}
@@ -390,13 +379,29 @@ public class PolyCircDrag extends JPanel implements Runnable, MouseListener,
 		float[] delta = Vect2d.vectSub(tree, play);
 		float hyp = Vect2d.norm(delta);
 		float opp = pRad + tRad;
+		if (hyp < opp) {
+			// project player loc out of the tree.
+			System.out.println("BUGG time");
+			float[] nu = Vect2d.scaleVectTo(delta.clone(), opp);
+			delta = Vect2d.vectSub(nu, delta);
+			return new float[][] { delta, delta };
+		} else if (hyp == opp) {
+
+		}
+		System.out.println("hyp: " + hyp);
+		System.out.println("opp: " + opp);
 		float adj = (float) Math.sqrt(hyp * hyp - opp * opp);
 		float treeThea = Vect2d.pointToThea(delta);
 		float shapeThea = Vect2d.pointToThea(new float[] { adj, opp });
 		float addThea = Vect2d.theaAdd(treeThea, shapeThea);
 		float subThea = Vect2d.theaSub(treeThea, shapeThea);
+		System.out.println("adj: " + adj);
+		System.out.println("addThea: " + addThea);
 		float[] addPoint = Vect2d.theaToPoint(addThea, adj);
 		float[] subPoint = Vect2d.theaToPoint(subThea, adj);
+		// System.out.println("addPoint (" + addPoint[0] + ", " + addPoint[1]
+		// + ")" + "    subPoint (" + subPoint[0] + ", " + subPoint[1]
+		// + ")");
 
 		return new float[][] { addPoint, subPoint };
 	}
@@ -415,16 +420,21 @@ public class PolyCircDrag extends JPanel implements Runnable, MouseListener,
 	}
 
 	private void sortFollowPath() {
+		// Vect2d.sayVect("pLocPre", pLoc);
 		if (path[0] == 0) {
 			// linear so go straight
 			if (path[3] > playSpeedLeft) {
+				// Vect2d.sayVect("path", path);
 				pLoc[0] += path[1] * playSpeedLeft;
 				pLoc[1] += path[2] * playSpeedLeft;
+				// Vect2d.sayVect("pLoc", pLoc);
 				path[3] -= playSpeedLeft;
 				playSpeedLeft = 0;
 			} else {
+				// Vect2d.sayVect("path", path);
 				pLoc[0] += path[1] * path[3];
 				pLoc[1] += path[2] * path[3];
+				// Vect2d.sayVect("pLoc", pLoc);
 				playSpeedLeft -= path[3];
 				path = JaMa.removeFirstFloatAr(path, 4);
 			}
@@ -444,11 +454,14 @@ public class PolyCircDrag extends JPanel implements Runnable, MouseListener,
 				}
 				path[1] = newThea;
 				float[] newLoc = Vect2d.theaToPoint(newThea, path[3]);
+				// Vect2d.sayVect("newLoc", newLoc);
 				pLoc[0] = trees[(int) path[4]][0] + newLoc[0];
 				pLoc[1] = trees[(int) path[4]][1] + newLoc[1];
+				// Vect2d.sayVect("pLoc", pLoc);
 				playSpeedLeft = 0;
 			} else {
 				float[] newLoc = Vect2d.theaToPoint(path[2], path[3]);
+				// Vect2d.sayVect("newLoc", newLoc);
 				pLoc[0] = trees[(int) path[4]][0] + newLoc[0];
 				pLoc[1] = trees[(int) path[4]][1] + newLoc[1];
 				path = JaMa.removeFirstFloatAr(path, 5);
@@ -488,6 +501,21 @@ public class PolyCircDrag extends JPanel implements Runnable, MouseListener,
 				}
 			}
 			path = paths.get(shortest);
+			int at = 0;
+			System.out.print("path [");
+			while (at < path.length) {
+				if (at != 0) {
+					System.out.print(", ");
+				}
+				System.out.print("(" + path[at] + ": " + path[at + 1] + ", "
+						+ path[at + 2] + ")");
+				if (path[at] == 0) {
+					at += 4;
+				} else {
+					at += 5;
+				}
+			}
+			System.out.println("]");
 		}
 	}
 
@@ -787,7 +815,6 @@ public class PolyCircDrag extends JPanel implements Runnable, MouseListener,
 	private float[][] getOuterAdjPre(int oldTreeIndex, float circOneR,
 			int newTreeIndex, float circTwoR, float oldEntranceThea,
 			int pathIndex, boolean add) {
-		System.out.println("*getOuterAdjPre*");
 		float[][] seg;
 		if (circTwoR > circOneR) {
 			// System.out.println("greater than.");
@@ -899,31 +926,6 @@ public class PolyCircDrag extends JPanel implements Runnable, MouseListener,
 	ArrayList<int[]> mPress;
 	int lastClick;
 
-	// void qPress() {
-	// for (int p = 0; p < mPress.size(); p++) {
-	// if (mPress.get(p)[2] == 1) {
-	// lastClick = 1;
-	// // 1 is left mouse button
-	// clearSelected();
-	// // Check to see if it click on one of its units.
-	// // Check to see if it click on the unit of another controller.
-	// for (int u = 0; u < units.size(); u++) {
-	// if (units.get(u).overlap(mPress.get(p)[0] + cameraLoc[0],
-	// mPress.get(p)[1] + cameraLoc[1])) {
-	// units.get(u).setSelected(true);
-	// } }
-	// } else if (mPress.get(p)[2] == 3) {
-	// lastClick = 3;
-	// // 3 is right mouse button
-	// System.out.println("3p");
-	// // set target and at the beginning of the next tick make paths
-	// // for all selected units.
-	// makePaths(mPress.get(p)[0] + (int) cameraLoc[0],
-	// mPress.get(p)[1] + (int) cameraLoc[1]);
-	// } }
-	// mPress.clear();
-	// }
-
 	public long timer() {
 		return System.currentTimeMillis() - startTime;
 
@@ -939,6 +941,8 @@ public class PolyCircDrag extends JPanel implements Runnable, MouseListener,
 	public void keyPressed(KeyEvent ke) {
 		if (ke.getKeyCode() == KeyEvent.VK_ENTER) {
 			drawBackground = true;
+		} else if (ke.getKeyCode() == KeyEvent.VK_SPACE) {
+			moving = false;
 		}
 	}
 
@@ -959,13 +963,6 @@ public class PolyCircDrag extends JPanel implements Runnable, MouseListener,
 		clickInfo[0] = me.getX();
 		clickInfo[1] = me.getY();
 		clickInfo[2] = me.getButton();
-		// System.out.println("(x, y): (" + x + ", " + y + ")");
-		// Vect2d.sayVect("cameraLoc", cameraLoc);
-		// if (!mD) {
-		// lastDragLoc[0] = me.getX();
-		// lastDragLoc[1] = me.getY();
-		// }
-		// mPress.add(new int[] { me.getX(), me.getY(), me.getButton() });
 	}
 
 	@Override
@@ -994,10 +991,6 @@ public class PolyCircDrag extends JPanel implements Runnable, MouseListener,
 		clickInfo[0] = me.getX();
 		clickInfo[1] = me.getY();
 		clickInfo[2] = 3;
-		// mDrag[0] = me.getX();
-		// mDrag[1] = me.getY();
-		// mDrag[2] = me.getButton();
-		// mD = true;
 	}
 
 	@Override
